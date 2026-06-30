@@ -6,6 +6,7 @@ import { ArtifactCanvas, pageCount, pageLabel } from '../artifacts/ArtifactCanva
 import { DeckView } from '../artifacts/renderers/DeckView';
 import { useAppStore } from '../store/useAppStore';
 import { reviseArtifact } from '../generation/engine';
+import { exportArtifact } from '../export/exportArtifact';
 import { MODELS } from '../data/templates';
 
 interface ChatMsg { role: 'assistant' | 'user'; text: string; }
@@ -27,6 +28,7 @@ export function Studio() {
   const [showVersions, setShowVersions] = useState(false);
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>(() => [
     {
       role: 'assistant',
@@ -152,6 +154,25 @@ export function Studio() {
             )}
             <button type="button" onClick={() => setShared((s) => !s)} style={{ ...ghostBtn, color: shared ? color.positive : color.textMuted }}>{shared ? '✓ Shared' : 'Share'}</button>
             <button type="button" onClick={() => showToast('Copied to a new chat.')} style={ghostBtn}>Copy</button>
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={async () => {
+                setDownloading(true);
+                try {
+                  await exportArtifact(artifact);
+                  const ext = artifact.type === 'Doc' ? '.docx' : artifact.type === 'Sheet' ? '.xlsx' : artifact.type === 'Deck' ? '.pptx' : '.html';
+                  showToast(`Downloaded ${artifact.name}${ext}`);
+                } catch {
+                  showToast("Couldn't export — is the artifact service running?");
+                } finally {
+                  setDownloading(false);
+                }
+              }}
+              style={{ cursor: downloading ? 'default' : 'pointer', border: 'none', background: color.ink, color: '#fff', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, opacity: downloading ? 0.6 : 1 }}
+            >
+              {downloading ? 'Exporting…' : '⤓ Download'}
+            </button>
           </div>
         </div>
 

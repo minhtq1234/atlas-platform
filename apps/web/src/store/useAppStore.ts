@@ -1,0 +1,203 @@
+import { create } from 'zustand';
+import type { ArtifactType, BuildRequest, SourceOption, UploadRef } from '../types';
+import { MODELS, SOURCES, type TabKey, type Template } from '../data/templates';
+
+export interface BuildState {
+  active: boolean;
+  pct: number;
+  name: string;
+  stage: string;
+}
+
+export type MenuName = 'output' | 'source' | 'model' | null;
+
+/** What the configure overlay is editing. */
+export interface ConfigureTarget {
+  name: string;
+  type: ArtifactType;
+  sourceKey?: string;
+  sourceLabel?: string;
+  templateId?: string;
+}
+
+interface AppState {
+  lang: 'en' | 'vi';
+
+  // composer
+  draft: string;
+  output: ArtifactType;
+  sourceKey: string | null;
+  modelId: string;
+  uploads: UploadRef[];
+
+  // ui
+  menu: MenuName;
+  tab: TabKey;
+  toast: string | null;
+  connectOpen: boolean;
+
+  // data sources (mutable connect state, seeded from SOURCES)
+  sources: SourceOption[];
+
+  // configure overlay
+  configure: ConfigureTarget | null;
+  configDraft: string;
+  chips: string[];
+
+  // build
+  build: BuildState | null;
+  pendingReq: BuildRequest | null;
+
+  // actions
+  setLang: (l: 'en' | 'vi') => void;
+  setDraft: (v: string) => void;
+  setOutput: (t: ArtifactType) => void;
+  selectSource: (key: string) => void;
+  clearSource: () => void;
+  setModel: (id: string) => void;
+  toggleMenu: (name: Exclude<MenuName, null>) => void;
+  closeMenus: () => void;
+  setTab: (tab: TabKey) => void;
+  addUpload: (u: UploadRef) => void;
+  removeUpload: (id: string) => void;
+  toggleSourceConnected: (key: string) => void;
+  openConnect: () => void;
+  closeConnect: () => void;
+  showToast: (msg: string) => void;
+  clearToast: () => void;
+
+  openConfigure: (t: ConfigureTarget) => void;
+  openConfigureFromTemplate: (tpl: Template) => void;
+  closeConfigure: () => void;
+  setConfigDraft: (v: string) => void;
+  addChip: (text: string) => void;
+  removeChip: (index: number) => void;
+
+  /** Kick off a build from the composer or configure overlay. */
+  beginBuild: (req: BuildRequest, name: string) => void;
+  /** Compose a BuildRequest from current composer state + a brief. */
+  composerRequest: (brief: string) => BuildRequest;
+}
+
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+export const useAppStore = create<AppState>((set, get) => ({
+  lang: 'en',
+
+  draft: '',
+  output: 'Doc',
+  sourceKey: 'HRCore',
+  modelId: MODELS[0].id,
+  uploads: [],
+
+  menu: null,
+  tab: 'all',
+  toast: null,
+  connectOpen: false,
+
+  sources: SOURCES.map((s) => ({ ...s })),
+
+  configure: null,
+  configDraft: '',
+  chips: [],
+
+  build: null,
+  pendingReq: null,
+
+  setLang: (lang) => set({ lang }),
+  setDraft: (draft) => set({ draft }),
+  setOutput: (output) => set({ output, menu: null }),
+
+  selectSource: (key) => {
+    const src = get().sources.find((s) => s.key === key);
+    if (src && src.connected && src.accessible) {
+      set({ sourceKey: key, menu: null });
+    } else {
+      // not connected / not provisioned → route to the connect panel
+      set({ menu: null, connectOpen: true });
+    }
+  },
+  clearSource: () => set({ sourceKey: null }),
+  setModel: (modelId) => set({ modelId, menu: null }),
+
+  toggleMenu: (name) => set((s) => ({ menu: s.menu === name ? null : name })),
+  closeMenus: () => set({ menu: null }),
+  setTab: (tab) => set({ tab }),
+
+  addUpload: (u) => set((s) => ({ uploads: [...s.uploads, u] })),
+  removeUpload: (id) =>
+    set((s) => ({ uploads: s.uploads.filter((u) => u.id !== id) })),
+
+  toggleSourceConnected: (key) =>
+    set((s) => ({
+      sources: s.sources.map((src) =>
+        src.key === key && src.accessible
+          ? { ...src, connected: !src.connected }
+          : src,
+      ),
+    })),
+  openConnect: () => set({ connectOpen: true, menu: null }),
+  closeConnect: () => set({ connectOpen: false }),
+
+  showToast: (msg) => {
+    set({ toast: msg });
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => set({ toast: null }), 2800);
+  },
+  clearToast: () => set({ toast: null }),
+
+  openConfigure: (configure) =>
+    set({ configure, chips: [], configDraft: '' }),
+  openConfigureFromTemplate: (tpl) =>
+    set({
+      configure: {
+        name: tpl.name,
+        type: tpl.type,
+        sourceKey: tpl.sourceKey,
+        sourceLabel: tpl.sourceLabel,
+        templateId: tpl.id,
+      },
+      chips: [],
+      configDraft: '',
+    }),
+  closeConfigure: () => set({ configure: null }),
+  setConfigDraft: (configDraft) => set({ configDraft }),
+  addChip: (text) => {
+    const t = text.trim();
+    if (!t) return;
+    set((s) =>
+      s.chips.includes(t)
+        ? { configDraft: '' }
+        : { chips: [...s.chips, t], configDraft: '' },
+    );
+  },
+  removeChip: (index) =>
+    set((s) => ({ chips: s.chips.filter((_, i) => i !== index) })),
+
+  composerRequest: (brief) => {
+    const s = get();
+    const src = s.sources.find((x) => x.key === s.sourceKey);
+    return {
+      brief,
+      type: s.output,
+      sourceKey: src?.key,
+      modelId: s.modelId,
+      uploads: s.uploads,
+      lang: s.lang,
+    };
+  },
+
+  beginBuild: (req, name) =>
+    set({
+      pendingReq: req,
+      configure: null,
+      build: {
+        active: true,
+        pct: 0,
+        name,
+        stage: req.uploads && req.uploads.length
+          ? 'Reading your files…'
+          : 'Reading the brief…',
+      },
+    }),
+}));

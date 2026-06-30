@@ -1,0 +1,46 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "greennode": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "GreenNode MaaS",
+      "options": {
+        "baseURL": "{env:GREENNODE_BASE_URL}",
+        "apiKey": "{env:GREENNODE_API_KEY}"
+      },
+      "models": {
+        "llama3-70b": { "name": "GreenNode Llama-3 70B" },
+        "qwen25-72b": { "name": "GreenNode Qwen2.5 72B" },
+        "mistral-large": { "name": "GreenNode Mistral Large" }
+      }
+    }
+  },
+  "model": "greennode/llama3-70b",
+  "mcp": {
+    "fdl": {
+      "type": "remote",
+      "url": "{env:FDL_MCP_URL}",
+      "enabled": true
+    }
+  },
+  "agent": {
+    "hr": {
+      "description": "HR domain — headcount, org, hiring, leave (HRCore/Odoo).",
+      "mode": "primary",
+      "prompt": "{file:./agents/hr.md}",
+      "tools": { "fdl*": true, "write": false, "edit": false, "bash": false }
+    },
+    "legal": {
+      "description": "Legal domain — contracts, parties, dates, document metadata.",
+      "mode": "primary",
+      "prompt": "{file:./agents/legal.md}",
+      "tools": { "fdl*": true, "write": false, "edit": false, "bash": false }
+    },
+    "fa": {
+      "description": "Finance & Accounting domain — ERP, e-forms, comp.",
+      "mode": "primary",
+      "prompt": "{file:./agents/fa.md}",
+      "tools": { "fdl*": true, "write": false, "edit": false, "bash": false }
+    }
+  }
+}

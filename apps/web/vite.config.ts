@@ -13,6 +13,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },
+      // BFF (services/bff) — model-backed generation.
+      '/bff': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/bff/, ''),
+      },
     },
   },
 });

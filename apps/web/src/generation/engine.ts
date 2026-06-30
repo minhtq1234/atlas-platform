@@ -8,7 +8,7 @@ export interface GenerationEngine {
   revise(artifact: Artifact, instruction: string): Promise<ArtifactVersion>;
 }
 
-const mockEngine: GenerationEngine = {
+export const mockEngine: GenerationEngine = {
   async generate(req, name) {
     const now = Date.now();
     const version: ArtifactVersion = {

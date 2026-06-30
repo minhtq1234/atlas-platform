@@ -4,6 +4,9 @@ import { Orb } from '../components/Orb';
 import { Composer } from '../components/Composer';
 import { TemplateGallery } from '../components/TemplateGallery';
 import { Toast } from '../components/Toast';
+import { ConfigureOverlay } from '../components/ConfigureOverlay';
+import { ConnectSourcesOverlay } from '../components/ConnectSourcesOverlay';
+import { BuildOverlay } from '../components/BuildOverlay';
 import { useAppStore } from '../store/useAppStore';
 import { t } from '../i18n/strings';
 
@@ -32,6 +35,10 @@ export function Home() {
       </div>
 
       <TemplateGallery />
+
+      <ConfigureOverlay />
+      <ConnectSourcesOverlay />
+      <BuildOverlay />
       <Toast />
     </div>
   );

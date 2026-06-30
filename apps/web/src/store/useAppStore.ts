@@ -1,5 +1,12 @@
 import { create } from 'zustand';
-import type { ArtifactType, BuildRequest, SourceOption, UploadRef } from '../types';
+import type {
+  Artifact,
+  ArtifactType,
+  ArtifactVersion,
+  BuildRequest,
+  SourceOption,
+  UploadRef,
+} from '../types';
 import { MODELS, SOURCES, type TabKey, type Template } from '../data/templates';
 
 export interface BuildState {
@@ -48,6 +55,9 @@ interface AppState {
   build: BuildState | null;
   pendingReq: BuildRequest | null;
 
+  // library
+  library: Artifact[];
+
   // actions
   setLang: (l: 'en' | 'vi') => void;
   setDraft: (v: string) => void;
@@ -77,6 +87,14 @@ interface AppState {
   beginBuild: (req: BuildRequest, name: string) => void;
   /** Compose a BuildRequest from current composer state + a brief. */
   composerRequest: (brief: string) => BuildRequest;
+  setBuildPct: (pct: number) => void;
+  endBuild: () => void;
+
+  // library
+  addArtifact: (a: Artifact) => void;
+  artifactById: (id: string) => Artifact | undefined;
+  addVersion: (artifactId: string, v: ArtifactVersion) => void;
+  setCurrentVersion: (artifactId: string, index: number) => void;
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -103,6 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   build: null,
   pendingReq: null,
+  library: [],
 
   setLang: (lang) => set({ lang }),
   setDraft: (draft) => set({ draft }),
@@ -200,4 +219,35 @@ export const useAppStore = create<AppState>((set, get) => ({
           : 'Reading the brief…',
       },
     }),
+  setBuildPct: (pct) =>
+    set((s) => {
+      if (!s.build) return {};
+      const stages = [
+        s.build.stage.startsWith('Reading') ? s.build.stage : 'Reading the brief…',
+        `Composing ${s.pendingReq?.type?.toLowerCase() ?? 'artifact'}…`,
+        'Polishing the layout…',
+        'Almost there…',
+      ];
+      return { build: { ...s.build, pct, stage: stages[Math.min(stages.length - 1, Math.floor(pct / 26))] } };
+    }),
+  endBuild: () => set({ build: null, pendingReq: null }),
+
+  addArtifact: (a) => set((s) => ({ library: [a, ...s.library] })),
+  artifactById: (id) => get().library.find((a) => a.id === id),
+  addVersion: (artifactId, v) =>
+    set((s) => ({
+      library: s.library.map((a) =>
+        a.id === artifactId
+          ? { ...a, versions: [...a.versions, v], currentVersion: a.versions.length }
+          : a,
+      ),
+    })),
+  setCurrentVersion: (artifactId, index) =>
+    set((s) => ({
+      library: s.library.map((a) =>
+        a.id === artifactId
+          ? { ...a, currentVersion: Math.max(0, Math.min(index, a.versions.length - 1)) }
+          : a,
+      ),
+    })),
 }));

@@ -1,0 +1,42 @@
+:root {
+  --paper: #F4F2EC;
+  --ink: #1A1A2E;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: #D6D3CA;
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+@keyframes risein {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes orb {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(180deg); }
+}
+
+/* Visible keyboard focus on all interactive elements (a11y). */
+:focus-visible {
+  outline: 2px solid #2D3A8C;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+button { font-family: inherit; }

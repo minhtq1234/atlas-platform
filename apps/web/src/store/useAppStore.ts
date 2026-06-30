@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type {
   Artifact,
   ArtifactType,
@@ -99,7 +100,9 @@ interface AppState {
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
   lang: 'en',
 
   draft: '',
@@ -250,4 +253,11 @@ export const useAppStore = create<AppState>((set, get) => ({
           : a,
       ),
     })),
-}));
+    }),
+    {
+      name: 'atlas-store',
+      // Only persist durable data — not transient UI/build state.
+      partialize: (s) => ({ library: s.library, lang: s.lang }),
+    },
+  ),
+);

@@ -24,12 +24,18 @@ export function BuildOverlay() {
         const req = s.pendingReq;
         const name = s.build?.name ?? 'Artifact';
         if (req) {
-          generateArtifact(req, name).then((art) => {
-            s.addArtifact(art);
-            s.endBuild();
-            running.current = false;
-            navigate(`/studio/${art.id}`);
-          });
+          generateArtifact(req, name)
+            .then((art) => {
+              s.addArtifact(art);
+              s.endBuild();
+              running.current = false;
+              navigate(`/studio/${art.id}`);
+            })
+            .catch(() => {
+              s.endBuild();
+              running.current = false;
+              s.showToast("That build didn't complete — try again.");
+            });
         } else {
           s.endBuild();
           running.current = false;

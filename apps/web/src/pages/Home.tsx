@@ -3,6 +3,7 @@ import { TopBar } from '../components/TopBar';
 import { Orb } from '../components/Orb';
 import { Composer } from '../components/Composer';
 import { TemplateGallery } from '../components/TemplateGallery';
+import { RecentArtifacts } from '../components/RecentArtifacts';
 import { Toast } from '../components/Toast';
 import { ConfigureOverlay } from '../components/ConfigureOverlay';
 import { ConnectSourcesOverlay } from '../components/ConnectSourcesOverlay';
@@ -35,6 +36,7 @@ export function Home() {
       </div>
 
       <TemplateGallery />
+      <RecentArtifacts />
 
       <ConfigureOverlay />
       <ConnectSourcesOverlay />

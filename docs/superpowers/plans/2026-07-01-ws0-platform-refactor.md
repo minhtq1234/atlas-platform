@@ -8,7 +8,18 @@
 
 **Tech Stack:** BFF = Node + TS + zod + vitest. Web = React + vitest. Export = Python + pytest. Companion (separate plan): the exemplar toolkit (WS-0 spec §5).
 
-**Success:** existing suites stay green (BFF 51 · web 34 · Python 14); `ArtifactContent`, `SHAPE`, `generateSystem`, `shapeHint`, `ARCHETYPES`/`detectArchetype`/`archetype` keep their public shape; a new type = one new module folder + one registry line.
+**Success:** existing suites stay green (BFF 51 · web 34 · Python 14); `ArtifactContent`, `SHAPE`, `generateSystem`, `shapeHint`, `ARCHETYPES`/`detectArchetype`/`archetype` keep their public shape; a new type = one new module folder + a couple registry lines.
+
+---
+
+## Corrections applied during execution (2026-07-01)
+
+Two plan defects surfaced at the tri-suite gate and were fixed as behavior-preserving corrections. The **design doc + program doc contract were updated to match and are authoritative** over the code blocks below.
+
+1. **`ArtifactContent` inference (Task 4).** `z.discriminatedUnion('kind', MODULES.map(m => m.schema) as [...])` type-checks in isolation but collapses `z.infer<ArtifactContent>` to `{ kind }`-only (the contract intentionally widens `schema`), breaking every consumer (`templates.ts`) the moment `types.ts` re-exports it. **Fix:** build the union from the concrete per-type schema imports — `z.discriminatedUnion('kind', [DocContent, DeckContent, SheetContent, DashboardContent, ReportContent])` (no cast). The registry test now parses one sample per `MODULES` type to guard the concrete-list-vs-`MODULES` pairing. (This defect was flagged "acceptable" at plan-review and Unit A review — it only bites when a consumer of the type appears, which is why the incremental gate caught it.)
+2. **`guidance` contract (Tasks 1–2).** `guidance(archetypeId?: string)` re-resolves the id inside the module and cannot honor a caller-supplied/synthetic archetype — but `generateSystem` originally used the passed archetype **object** (`prompt.test.ts` covers this). **Fix:** the contract is `guidance(arch?: Archetype)` — the caller resolves via registry `archetype(id)`, the module formats the resolved object. This also removes the Doc-specific branch from shared `prompt.ts`. Thin modules stay `() => ''`.
+
+Everything else executed as written.
 
 ---
 

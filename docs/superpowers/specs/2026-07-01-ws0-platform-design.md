@@ -30,9 +30,9 @@ be added by dropping one module folder; a Doc generate injects a Doc exemplar.
 // services/bff/src/artifacts/<type>/index.ts
 export interface ArtifactTypeModule {
   type: ArtifactType;                        // 'Doc'|'Deck'|'Sheet'|'Dashboard'|'Report'
-  schema: z.ZodObject<any>;                  // raw ZodObject (discriminated-union member — NO .refine)
+  schema: z.ZodObject<{ kind: z.ZodLiteral<ArtifactType> } & Record<string, z.ZodTypeAny>>; // raw ZodObject (union member — NO .refine)
   shapeHint: string;                         // JSON shape string for generate + revise prompts
-  guidance(archetypeId?: string): string;    // type/archetype steering appended to the prompt ('' if none)
+  guidance(arch?: Archetype): string;        // steering for the RESOLVED archetype object ('' if none); caller resolves via registry archetype(id)
   archetypes: Archetype[];                   // type-specific archetypes (team-owned data, e.g. a PRD under Doc)
   exemplarKey: string;                       // tag to store/retrieve this type's exemplars (default: type.toLowerCase())
 }
@@ -47,7 +47,11 @@ accepts it) — the "at least one of paragraphs|sections" style rules stay soft
 **BFF — `services/bff/src/artifacts/registry.ts`:**
 ```ts
 export const MODULES: ArtifactTypeModule[] = [doc, deck, sheet, dashboard, report];
-export const ArtifactContent = z.discriminatedUnion('kind', MODULES.map(m => m.schema) as [...]);
+// Union is built from the CONCRETE per-type schemas (full type inference). A
+// `MODULES.map(m => m.schema)` union would collapse z.infer to `{ kind }`-only, since
+// the contract widens `schema` — so the runtime registries use MODULES, but the union
+// imports the concrete schemas. (The registry test asserts every MODULES type parses.)
+export const ArtifactContent = z.discriminatedUnion('kind', [DocContent, DeckContent, SheetContent, DashboardContent, ReportContent]);
 export const SHAPE: Record<ArtifactType,string> = Object.fromEntries(MODULES.map(m => [m.type, m.shapeHint]));
 export const ARCHETYPES = /* flatten MODULES[].archetypes + the shared 'general' */;
 export const moduleFor = (t: ArtifactType) => MODULES.find(m => m.type === t)!;

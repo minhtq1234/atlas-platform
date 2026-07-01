@@ -37,18 +37,20 @@ WS-0 before packs start.
 // services/bff/src/artifacts/<type>/index.ts
 export interface ArtifactTypeModule {
   type: ArtifactType;                       // 'Doc' | 'Deck' | 'Sheet' | 'Dashboard' | 'Report'
-  schema: z.ZodObject<any>;                 // the content shape (must be a raw ZodObject — union member)
+  schema: z.ZodObject<{ kind: z.ZodLiteral<ArtifactType> } & Record<string, z.ZodTypeAny>>; // raw ZodObject — union member
   shapeHint: string;                        // JSON shape string for generate + revise prompts
-  guidance(archetypeId?: string): string;   // type/archetype steering appended to the prompt
+  guidance(arch?: Archetype): string;       // steering for the resolved archetype object ('' if none)
   archetypes: Archetype[];                  // type-specific archetypes (team-owned data, e.g. a PRD under Doc)
   exemplarKey: string;                      // tag used to store/retrieve this type's exemplars
 }
 ```
 
 **Composition (Platform-owned registries):**
-- BFF: `ArtifactContent = z.discriminatedUnion('kind', modules.map(m => m.schema))`;
-  `SHAPE[type] = module.shapeHint`; the archetype registry flattens every module's
-  `archetypes`; the generate/revise prompt calls `module.guidance(archetypeId)`.
+- BFF: `ArtifactContent = z.discriminatedUnion('kind', [DocContent, …])` built from the
+  concrete per-type schemas (mapping over `modules.map(m => m.schema)` collapses the
+  inferred type to `{ kind }`-only — the contract widens `schema`); `SHAPE[type] =
+  module.shapeHint`; the archetype registry flattens every module's `archetypes`; the
+  generate prompt calls `module.guidance(arch)` with the resolved archetype object.
 - Web: a renderer registry `type → <Type>View` (formalize what `ArtifactCanvas`
   already switches on).
 - Python: an export registry `type → build_<type>(content)`.
@@ -83,6 +85,12 @@ consumed uniformly by all packs. Each is its own sub-spec.
 ## 5. Workstreams
 
 ### WS-0 · Platform (core team, FIRST — unblocks everyone)
+> **Status (2026-07-01): phase-1 landed.** The `ArtifactTypeModule` contract, the per-type
+> module refactor behind BFF/web/python registries, and contract tests are built and merged
+> (tri-suite green: BFF 55 · web 34 · Python 14; public API unchanged; "add a type = one
+> module folder + a couple registry lines"). **Phase-2 (companion plan)** — the exemplar
+> toolkit, Doc exemplars/seeds, and the pack authoring guide + module template — is not yet
+> built; pack teams are fully unblocked only once it lands.
 - Define + freeze the `ArtifactTypeModule` contract.
 - Refactor `types.ts` / `prompt.ts` / `archetypes.ts` into per-type modules behind
   registries, keeping the public API (`ArtifactContent`, `SHAPE`, `generateSystem`,

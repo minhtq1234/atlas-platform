@@ -59,6 +59,10 @@ interface AppState {
   // library
   library: Artifact[];
 
+  // agent skills — per-artifact plan-confirm state (persisted, survives reload)
+  awaiting: Record<string, 'none' | 'plan-confirm'>;
+  pendingPlan: Record<string, { steps: string[] }>;
+
   // actions
   setLang: (l: 'en' | 'vi') => void;
   setDraft: (v: string) => void;
@@ -97,6 +101,8 @@ interface AppState {
   artifactById: (id: string) => Artifact | undefined;
   addVersion: (artifactId: string, v: ArtifactVersion) => void;
   setCurrentVersion: (artifactId: string, index: number) => void;
+  /** Record the next awaiting state (and pending plan) for an artifact's chat. */
+  setAwaiting: (id: string, awaiting: 'none' | 'plan-confirm', plan?: { steps: string[] }) => void;
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -126,6 +132,8 @@ export const useAppStore = create<AppState>()(
   build: null,
   pendingReq: null,
   library: [],
+  awaiting: {},
+  pendingPlan: {},
 
   setLang: (lang) => set({ lang }),
   setDraft: (draft) => set({ draft }),
@@ -245,11 +253,16 @@ export const useAppStore = create<AppState>()(
           : a,
       ),
     })),
+  setAwaiting: (id, awaiting, plan) =>
+    set((s) => ({
+      awaiting: { ...s.awaiting, [id]: awaiting },
+      pendingPlan: { ...s.pendingPlan, [id]: plan ?? { steps: [] } },
+    })),
     }),
     {
       name: 'atlas-store',
       // Only persist durable data — not transient UI/build state.
-      partialize: (s) => ({ library: s.library, lang: s.lang }),
+      partialize: (s) => ({ library: s.library, lang: s.lang, awaiting: s.awaiting, pendingPlan: s.pendingPlan }),
     },
   ),
 );

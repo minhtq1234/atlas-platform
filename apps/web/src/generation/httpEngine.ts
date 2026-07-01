@@ -1,8 +1,8 @@
 // HTTP-backed generation engine that calls the BFF (services/bff), which drives
 // OpenCode → the GreenNode model. Wrapped in a resilient engine that falls back
 // to the in-browser mock when the BFF is unreachable, so the app always works.
-import type { Artifact, BuildRequest } from '../types';
-import type { GenerationEngine, ReviseResult } from './engine';
+import type { AgentTurn, Artifact, BuildRequest } from '../types';
+import type { GenerationEngine, ReviseOpts } from './engine';
 
 /** The BFF was reachable but returned an error (vs. a network/transport failure). */
 export class BffServerError extends Error {}
@@ -19,7 +19,7 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
       return res.json();
     },
 
-    async revise(artifact: Artifact, instruction: string): Promise<ReviseResult> {
+    async revise(artifact: Artifact, message: string, opts?: ReviseOpts): Promise<AgentTurn> {
       const content = artifact.versions[artifact.currentVersion].content;
       const res = await fetch(`${baseUrl}/revise`, {
         method: 'POST',
@@ -27,10 +27,13 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
         body: JSON.stringify({
           type: artifact.type,
           current: content,
-          instruction,
+          instruction: message,
           modelId: artifact.modelId,
           lang: 'en',
           opencodeSessionId: artifact.opencodeSessionId,
+          awaiting: opts?.awaiting,
+          plan: opts?.plan,
+          confirm: opts?.confirm,
         }),
       });
       if (!res.ok) throw new BffServerError(`BFF revise failed (${res.status})`);
@@ -103,12 +106,12 @@ export function makeResilientEngine(
         return fallback.generate(req, name);
       }
     },
-    async revise(artifact, instruction) {
+    async revise(artifact, message, opts) {
       try {
-        return await primary.revise(artifact, instruction);
+        return await primary.revise(artifact, message, opts);
       } catch (e) {
         handle(e);
-        return fallback.revise(artifact, instruction);
+        return fallback.revise(artifact, message, opts);
       }
     },
     async generateStream(req, name, onStage) {

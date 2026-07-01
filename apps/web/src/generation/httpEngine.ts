@@ -168,5 +168,23 @@ export function makeResilientEngine(
         return fallback.generate(req, name);
       }
     },
+    async agentPlan(req) {
+      try {
+        return primary.agentPlan ? await primary.agentPlan(req) : fallback.agentPlan!(req);
+      } catch (e) {
+        handle(e);
+        return fallback.agentPlan ? fallback.agentPlan(req) : { steps: [] };
+      }
+    },
+    async agentRun(req, name, plan, onStep) {
+      try {
+        return primary.agentRun
+          ? await primary.agentRun(req, name, plan, onStep)
+          : fallback.generate(req, name);
+      } catch (e) {
+        handle(e);
+        return fallback.agentRun ? fallback.agentRun(req, name, plan, onStep) : fallback.generate(req, name);
+      }
+    },
   };
 }

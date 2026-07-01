@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generateArtifact, reviseArtifact } from './engine';
+import { generateArtifact, reviseArtifact, mockEngine } from './engine';
+import { makeResilientEngine } from './httpEngine';
 import type { BuildRequest, ArtifactType } from '../types';
 
 function req(type: ArtifactType, over: Partial<BuildRequest> = {}): BuildRequest {
@@ -74,5 +75,21 @@ describe('generateArtifact (mock engine)', () => {
     expect(turn.version!.note).toContain('Q3 outlook');
     expect(turn.version!.id).not.toBe(a.versions[0].id);
     expect(turn.action.message).toBeTruthy();
+  });
+});
+
+describe('makeResilientEngine — agent methods', () => {
+  it('forwards agentPlan + agentRun to the primary engine', async () => {
+    const calls: string[] = [];
+    const primary = {
+      ...mockEngine,
+      agentPlan: async () => { calls.push('plan'); return { steps: ['from primary'] }; },
+      agentRun: async (r: BuildRequest, n: string) => { calls.push('run'); return mockEngine.generate(r, n); },
+    };
+    const eng = makeResilientEngine(primary, mockEngine);
+    const plan = await eng.agentPlan!(req('Doc'));
+    expect(plan.steps).toEqual(['from primary']);
+    await eng.agentRun!(req('Doc'), 'M', { steps: ['x'] }, () => {});
+    expect(calls).toEqual(['plan', 'run']);
   });
 });

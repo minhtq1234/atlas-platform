@@ -47,7 +47,7 @@
       "description": "Autonomous multi-step builder — parses inputs, derives facts, emits an artifact.",
       "mode": "primary",
       "prompt": "{file:./agents/builder.md}",
-      "tools": { "write": true, "read": true, "edit": false, "bash": false, "todowrite": false, "todoread": false }
+      "tools": { "write": true, "read": true, "edit": false, "bash": false, "todowrite": false, "todoread": false, "glob": false, "grep": false, "list": false }
     }
   }
 }

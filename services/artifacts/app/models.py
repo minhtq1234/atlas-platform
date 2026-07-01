@@ -13,12 +13,42 @@ class Callout(BaseModel):
     label: str
 
 
+class TableBlock(BaseModel):
+    type: Literal["table"]
+    columns: list[str]
+    rows: list[list[str]]
+
+class TextBlock(BaseModel):
+    type: Literal["paragraph"]
+    text: str
+
+class ListBlock(BaseModel):
+    type: Literal["bullets", "numbers"]
+    items: list[str]
+
+class CalloutBlock(BaseModel):
+    type: Literal["callout"]
+    value: str
+    label: str
+
+class BarsBlock(BaseModel):
+    type: Literal["bars"]
+    label: str | None = None
+    bars: list[Bar]
+
+Block = Union[TextBlock, ListBlock, TableBlock, CalloutBlock, BarsBlock]
+
+class Section(BaseModel):
+    heading: str
+    blocks: list[Block]
+
 class DocContent(BaseModel):
     kind: Literal["Doc"]
     eyebrow: str
     title: str
     meta: str
-    paragraphs: list[str] = Field(max_length=200)
+    paragraphs: list[str] | None = Field(default=None, max_length=200)
+    sections: list[Section] | None = Field(default=None, max_length=30)
     bars: list[Bar] | None = Field(default=None, max_length=50)
     barsLayout: Literal["vertical", "horizontal"] | None = None
     callout: Callout | None = None

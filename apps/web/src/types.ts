@@ -57,12 +57,22 @@ export interface BuildRequest {
 
 // ---- Artifact content models (what the renderers consume) ----
 
+export type DocBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'bullets'; items: string[] }
+  | { type: 'numbers'; items: string[] }
+  | { type: 'table'; columns: string[]; rows: string[][] }
+  | { type: 'callout'; value: string; label: string }
+  | { type: 'bars'; label?: string; bars: { label: string; value: number }[] };
+export interface DocSection { heading: string; blocks: DocBlock[] }
+
 export interface DocContent {
   kind: 'Doc';
   eyebrow: string;
   title: string;
   meta: string;
-  paragraphs: string[];
+  paragraphs?: string[];
+  sections?: DocSection[];
   bars?: { label: string; value: number }[]; // 0..1 heights
   barsLayout?: 'vertical' | 'horizontal'; // chart orientation (default vertical)
   callout?: { value: string; label: string };

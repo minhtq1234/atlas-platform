@@ -6,8 +6,9 @@ from urllib.parse import quote
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from pydantic import BaseModel
 
-from .attachments import store_attachment
+from .attachments import retrieve_context, store_attachment
 from .docx_builder import build_doc
 from .pptx_builder import build_deck
 from .models import ExportRequest
@@ -90,3 +91,14 @@ async def attachments(file: UploadFile = File(...)):
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+class RetrieveReq(BaseModel):
+    doc_ids: list[str]
+    query: str = ""
+    k: int = 6
+
+
+@app.post("/attachments/retrieve")
+def attachments_retrieve(req: RetrieveReq):
+    return {"passages": retrieve_context(req.doc_ids, req.query, req.k)}

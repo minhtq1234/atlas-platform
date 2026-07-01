@@ -103,3 +103,31 @@ def store_attachment(data: bytes, mime: str, name: str, now: float) -> dict:
         "chunk_count": len(chunks),
         "preview": text[:200],
     }
+
+
+# Phase 1: return each doc's whole text (chunks concatenated in order), capped so
+# the combined context stays within a sane budget. Embeddings are ignored (NULL).
+# Phase 2 (gated) would embed the query and cosine-rank chunks for large docs.
+TOTAL_CAP = 24000
+
+
+def retrieve_context(doc_ids: list[str], query: str, k: int = 6) -> list[dict]:
+    passages, budget = [], TOTAL_CAP
+    with _conn() as con:
+        for doc_id in doc_ids:
+            meta = con.execute(
+                "SELECT name FROM attachments WHERE doc_id=?", (doc_id,)
+            ).fetchone()
+            if not meta:
+                continue
+            rows = con.execute(
+                "SELECT text FROM chunks WHERE doc_id=? ORDER BY ord", (doc_id,)
+            ).fetchall()
+            text = "\n".join(r[0] for r in rows)[:budget]
+            if not text:
+                continue
+            passages.append({"doc_id": doc_id, "name": meta[0], "text": text})
+            budget -= len(text)
+            if budget <= 0:
+                break
+    return passages

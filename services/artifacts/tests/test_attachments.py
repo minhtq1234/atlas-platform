@@ -21,3 +21,12 @@ def test_upload_returns_docid_and_preview():
     assert r.status_code == 200
     j = r.json()
     assert j["doc_id"] and j["chars"] > 0 and "Q3" in j["preview"]
+
+
+def test_retrieve_returns_passages_for_docids():
+    c = TestClient(app)
+    doc = c.post("/attachments", files={"file": ("m.md", b"Alpha beta gamma.", "text/markdown")}).json()["doc_id"]
+    r = c.post("/attachments/retrieve", json={"doc_ids": [doc], "query": "beta", "k": 6})
+    assert r.status_code == 200
+    ps = r.json()["passages"]
+    assert ps and ps[0]["name"] == "m.md" and "beta" in ps[0]["text"]

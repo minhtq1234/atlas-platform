@@ -57,3 +57,42 @@ describe('BFF /generate + /revise (template path)', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe('BFF agent endpoints (template path)', () => {
+  it('/agent/plan returns a non-empty step list', async () => {
+    const app = buildServer();
+    const res = await app.inject({
+      method: 'POST', url: '/agent/plan',
+      payload: { req: { brief: 'rebuild the deck', type: 'Deck', modelId: 'gn-gemma' } },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().plan.steps.length).toBeGreaterThan(0);
+  });
+
+  it('/agent/run streams to a final done artifact (no model → template)', async () => {
+    const app = buildServer();
+    const res = await app.inject({
+      method: 'POST', url: '/agent/run',
+      payload: {
+        name: 'Board Deck',
+        req: { brief: 'rebuild the deck', type: 'Deck', modelId: 'gn-gemma' },
+        plan: { steps: ['Draft the deck'] },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toContain('event: done');
+    const doneLine = res.payload.split('\n\n').find((b) => b.startsWith('event: done'))!;
+    const artifact = JSON.parse(doneLine.split('\n').find((l) => l.startsWith('data:'))!.slice(5));
+    expect(artifact.type).toBe('Deck');
+    expect(artifact.versions[0].content.kind).toBe('Deck');
+  });
+
+  it('/agent/run rejects a body with no plan', async () => {
+    const app = buildServer();
+    const res = await app.inject({
+      method: 'POST', url: '/agent/run',
+      payload: { name: 'x', req: { brief: 'b', type: 'Doc', modelId: 'm' } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});

@@ -58,7 +58,7 @@ export function fallbackContent(req: BuildRequest): ArtifactContent {
 export function fallbackRevise(content: ArtifactContent, instruction: string): ArtifactContent {
   const note = `Revised — ${instruction}`;
   switch (content.kind) {
-    case 'Doc': return { ...content, paragraphs: [...content.paragraphs, note] };
+    case 'Doc': return { ...content, paragraphs: [...(content.paragraphs ?? []), note] };
     case 'Deck': return { ...content, slides: [...content.slides, { title: 'Update', bullets: [instruction] }] };
     case 'Sheet': return { ...content, rows: [...content.rows, ['Note', instruction, '']] };
     case 'Dashboard': return { ...content, subtitle: `${content.subtitle} · ${instruction}` };

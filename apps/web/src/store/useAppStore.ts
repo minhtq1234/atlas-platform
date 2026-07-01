@@ -35,6 +35,7 @@ interface AppState {
   // composer
   draft: string;
   output: ArtifactType;
+  archetypeId: string;
   sourceKey: string | null;
   modelId: string;
   uploads: UploadRef[];
@@ -69,6 +70,7 @@ interface AppState {
   setAgentMode: (v: boolean) => void;
   setDraft: (v: string) => void;
   setOutput: (t: ArtifactType) => void;
+  setArchetype: (id: string) => void;
   selectSource: (key: string) => void;
   clearSource: () => void;
   setModel: (id: string) => void;
@@ -118,6 +120,7 @@ export const useAppStore = create<AppState>()(
 
   draft: '',
   output: 'Doc',
+  archetypeId: 'general',
   sourceKey: 'HRCore',
   modelId: MODELS[0].id,
   uploads: [],
@@ -143,6 +146,7 @@ export const useAppStore = create<AppState>()(
   setAgentMode: (agentMode) => set({ agentMode }),
   setDraft: (draft) => set({ draft }),
   setOutput: (output) => set({ output, menu: null }),
+  setArchetype: (archetypeId) => set({ archetypeId }),
 
   selectSource: (key) => {
     const src = get().sources.find((s) => s.key === key);
@@ -224,6 +228,7 @@ export const useAppStore = create<AppState>()(
       modelId: s.modelId,
       uploads: s.uploads,
       lang: s.lang,
+      archetypeId: s.archetypeId,
     };
   },
 

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { config, generationEnabled } from './config';
 import { runModel } from './modelClient';
 import { generateSystem, generateUser } from './prompt';
+import { archetype, detectArchetype } from './archetypes';
 import { fallbackContent } from './templates';
 import {
   ArtifactContent,
@@ -81,8 +82,9 @@ async function produceContent(req: BuildRequest, onStage: Stage = () => {}): Pro
     const docIds = (req.uploads ?? []).map((u) => u.docId).filter((d): d is string => !!d);
     const context = docIds.length ? await contextProvider.getContext(docIds, req.brief) : [];
     onStage(`Composing ${req.type.toLowerCase()}…`);
+    const arch = archetype(req.archetypeId ?? detectArchetype(req.brief));
     const { text, sessionId } = await runModel(
-      generateSystem(req.type, req.lang ?? 'en'),
+      generateSystem(req.type, req.lang ?? 'en', arch),
       generateUser(req, context),
       req.modelId,
     );

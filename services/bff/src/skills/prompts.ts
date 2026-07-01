@@ -1,7 +1,7 @@
 type z_ArtifactType = 'Doc' | 'Deck' | 'Sheet' | 'Dashboard' | 'Report';
 
 const SHAPE: Record<z_ArtifactType, string> = {
-  Doc: `{"kind":"Doc","eyebrow":string,"title":string,"meta":string,"paragraphs":string[],"bars":[{"label":string,"value":number 0..1}]?,"barsLayout":"vertical"|"horizontal"?,"callout":{"value":string,"label":string}?}`,
+  Doc: `{"kind":"Doc","eyebrow":string,"title":string,"meta":string, EITHER "paragraphs":string[] OR "sections":[{"heading":string,"blocks":[{"type":"paragraph","text":string}|{"type":"bullets","items":string[]}|{"type":"numbers","items":string[]}|{"type":"table","columns":string[],"rows":string[][]}|{"type":"callout","value":string,"label":string}|{"type":"bars","label":string?,"bars":[{"label":string,"value":number 0..1}]}]}]}`,
   Deck: `{"kind":"Deck","eyebrow":string,"title":string,"subtitle":string,"slides":[{"title":string,"bullets":string[]?,"isCover":boolean?,"subtitle":string?}]}`,
   Sheet: `{"kind":"Sheet","title":string,"columns":string[],"rows":(string|number)[][]}`,
   Dashboard: `{"kind":"Dashboard","title":string,"subtitle":string,"tiles":[{"label":string,"value":string,"delta":string?}],"series":{"label":string,"bars":[{"label":string,"value":number 0..1}]}}`,

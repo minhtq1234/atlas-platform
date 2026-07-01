@@ -97,6 +97,7 @@ export const BuildRequest = z.object({
   uploads: z.array(UploadRef).max(20).optional(),
   brief_chips: z.array(z.string().max(200)).max(50).optional(),
   lang: z.enum(['en', 'vi']).optional(),
+  archetypeId: z.string().max(60).optional(),
 });
 export type BuildRequest = z.infer<typeof BuildRequest>;
 

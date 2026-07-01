@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { generateUser } from './prompt';
+import { generateUser, generateSystem } from './prompt';
+import { archetype } from './archetypes';
+
+describe('archetype-aware generate', () => {
+  it('injects the BRD skeleton + sectioned shape for a Doc', () => {
+    const sys = generateSystem('Doc', 'en', archetype('brd'));
+    expect(sys).toContain('Functional Requirements');   // skeleton
+    expect(sys).toContain('"sections"');                // sectioned shape offered
+    expect(sys).toMatch(/requirement.*priority/i);      // guidance
+  });
+  it('a Deck is unaffected by archetype', () => {
+    const sys = generateSystem('Deck', 'en', archetype('brd'));
+    expect(sys).toContain('"kind":"Deck"');
+    expect(sys).not.toContain('Functional Requirements');
+  });
+});
 
 describe('generateUser', () => {
   it('embeds context passages inside <context> when given', () => {

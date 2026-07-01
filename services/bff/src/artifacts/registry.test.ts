@@ -30,8 +30,8 @@ describe('artifact module registry', () => {
   it('SHAPE + moduleFor cover every type', () => {
     for (const m of MODULES) { expect(SHAPE[m.type]).toBe(m.shapeHint); expect(moduleFor(m.type)).toBe(m); }
   });
-  it('archetype registry ships only general; detection falls back', () => {
-    expect(Object.keys(ARCHETYPES)).toEqual(['general']);
+  it('archetype registry includes general + the Deck pack archetypes; detection falls back', () => {
+    expect(Object.keys(ARCHETYPES)).toEqual(expect.arrayContaining(['general', 'board', 'pitch']));
     expect(detectArchetype('anything at all')).toBe('general');
     expect(archetype('nope').id).toBe('general');
   });

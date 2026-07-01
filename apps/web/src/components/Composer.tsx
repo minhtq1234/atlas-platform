@@ -1,17 +1,21 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { color, radius, shadow } from '../brand/tokens';
 import { Dropdown, menuRowStyle } from './Dropdown';
 import { LogoMark } from './Orb';
+import { AgentRunOverlay } from './AgentRunOverlay';
 import { useAppStore } from '../store/useAppStore';
 import { MODELS, SOURCES, type Template } from '../data/templates';
-import { ARTIFACT_TYPES, type UploadRef } from '../types';
+import { ARTIFACT_TYPES, type UploadRef, type BuildRequest } from '../types';
 import { t } from '../i18n/strings';
 
 export function Composer() {
   const fileRef = useRef<HTMLInputElement>(null);
   const s = useAppStore();
+  const agentMode = useAppStore((s) => s.agentMode);
+  const setAgentMode = useAppStore((s) => s.setAgentMode);
   const selSource = s.sources.find((x) => x.key === s.sourceKey);
   const selModel = MODELS.find((m) => m.id === s.modelId);
+  const [agentReq, setAgentReq] = useState<{ req: BuildRequest; name: string } | null>(null);
 
   const doSend = () => {
     const brief = s.draft.trim();
@@ -20,6 +24,10 @@ export function Composer() {
       return;
     }
     const name = brief.length > 42 ? brief.slice(0, 42) + '…' : brief;
+    if (agentMode) {
+      setAgentReq({ req: s.composerRequest(brief), name });
+      return;
+    }
     s.beginBuild(s.composerRequest(brief), name);
   };
 
@@ -67,6 +75,7 @@ export function Composer() {
   } as const;
 
   return (
+    <>
     <div
       style={{
         width: '100%',
@@ -219,6 +228,17 @@ export function Composer() {
           ))}
         </Dropdown>
 
+        {/* agent mode toggle */}
+        <button
+          type="button"
+          onClick={() => setAgentMode(!agentMode)}
+          aria-pressed={agentMode}
+          title="Agent mode: multi-step, uses tools"
+          style={{ cursor: 'pointer', border: `1px solid ${agentMode ? color.indigo : color.border}`, background: agentMode ? color.indigo100 : '#fff', color: agentMode ? color.indigo : color.textMuted, borderRadius: radius.pill, padding: '6px 12px', fontSize: 12.5, fontWeight: 600 }}
+        >
+          ✦ Agent
+        </button>
+
         {/* upload */}
         <input ref={fileRef} type="file" multiple hidden onChange={(e) => onFiles(e.target.files)} />
         <button
@@ -241,6 +261,8 @@ export function Composer() {
         </button>
       </div>
     </div>
+    {agentReq && <AgentRunOverlay req={agentReq.req} name={agentReq.name} onClose={() => setAgentReq(null)} />}
+    </>
   );
 }
 

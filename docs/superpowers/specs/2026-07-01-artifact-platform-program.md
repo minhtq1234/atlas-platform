@@ -85,12 +85,14 @@ consumed uniformly by all packs. Each is its own sub-spec.
 ## 5. Workstreams
 
 ### WS-0 · Platform (core team, FIRST — unblocks everyone)
-> **Status (2026-07-01): phase-1 landed.** The `ArtifactTypeModule` contract, the per-type
-> module refactor behind BFF/web/python registries, and contract tests are built and merged
-> (tri-suite green: BFF 55 · web 34 · Python 14; public API unchanged; "add a type = one
-> module folder + a couple registry lines"). **Phase-2 (companion plan)** — the exemplar
-> toolkit, Doc exemplars/seeds, and the pack authoring guide + module template — is not yet
-> built; pack teams are fully unblocked only once it lands.
+> **Status (2026-07-01): phase-1 + phase-2 landed.** Phase-1 — the `ArtifactTypeModule`
+> contract, the per-type module refactor behind BFF/web/python registries, and contract tests
+> (public API unchanged; "add a type = one module folder + a couple registry lines"). Phase-2 —
+> the **exemplar toolkit** (server-side store + ingest + `ExemplarProvider` + capped `<exemplar>`
+> injection; no exemplar → generation unchanged), a committed **Doc exemplar seed**, and the
+> **pack authoring guide** (`docs/artifact-packs/AUTHORING.md`, module skeleton inline). Tri-suite
+> green: BFF 62 · web 34 · Python 24. Pack teams are unblocked. Remaining toolkit capabilities
+> (clarify-before-generate, reasoning-first, grounding) are later Platform stages (§4).
 - Define + freeze the `ArtifactTypeModule` contract.
 - Refactor `types.ts` / `prompt.ts` / `archetypes.ts` into per-type modules behind
   registries, keeping the public API (`ArtifactContent`, `SHAPE`, `generateSystem`,

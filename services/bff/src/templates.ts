@@ -37,7 +37,13 @@ export function fallbackContent(req: BuildRequest): ArtifactContent {
       return {
         kind: 'Dashboard', title: titleOf(req, 'Workforce Pulse'), subtitle: 'Headcount · Q2 2026',
         tiles: [{ label: 'HEADCOUNT', value: '1,248', delta: '+18' }, { label: 'OFFER ACCEPT', value: '94%', delta: '+3 pts' }],
-        series: { label: 'Headcount by month', bars: [0.46, 0.58, 0.64, 0.78, 0.88, 1] },
+        series: {
+          label: 'Headcount by month',
+          bars: [
+            { label: 'Jan', value: 0.46 }, { label: 'Feb', value: 0.58 }, { label: 'Mar', value: 0.64 },
+            { label: 'Apr', value: 0.78 }, { label: 'May', value: 0.88 }, { label: 'Jun', value: 1 },
+          ],
+        },
       };
     case 'Report':
       return {

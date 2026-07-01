@@ -88,7 +88,13 @@ function dashboardContent(req: BuildRequest): DashboardContent {
       { label: 'OFFER ACCEPT', value: '94%', delta: '+3 pts' },
       { label: 'ATTRITION', value: '6.2%', delta: '−0.4 pts' },
     ],
-    series: { label: 'Headcount by month', bars: [0.46, 0.58, 0.64, 0.78, 0.88, 1] },
+    series: {
+      label: 'Headcount by month',
+      bars: [
+        { label: 'Jan', value: 0.46 }, { label: 'Feb', value: 0.58 }, { label: 'Mar', value: 0.64 },
+        { label: 'Apr', value: 0.78 }, { label: 'May', value: 0.88 }, { label: 'Jun', value: 1 },
+      ],
+    },
   };
 }
 

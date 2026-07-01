@@ -87,7 +87,8 @@ export interface DashboardContent {
   title: string;
   subtitle: string;
   tiles: { label: string; value: string; delta?: string }[];
-  series: { label: string; bars: number[] }; // bar heights 0..1
+  // Each bar carries a category label (e.g. a month) + a 0..1 height.
+  series: { label: string; bars: { label: string; value: number }[] };
 }
 
 export interface ReportContent {

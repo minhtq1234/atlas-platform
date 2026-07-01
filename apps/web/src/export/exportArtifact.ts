@@ -61,8 +61,14 @@ function dashboardHtml(c: DashboardContent, name: string): string {
       (t) => `<div class="tile"><div class="lbl">${esc(t.label)}</div><div class="val">${esc(t.value)}</div>${t.delta ? `<div class="delta">${esc(t.delta)}</div>` : ''}</div>`,
     )
     .join('');
+  const n = c.series.bars.length;
   const bars = c.series.bars
-    .map((h, i) => `<div class="bar" style="height:${Math.round(h * 100)}%;background:${i === c.series.bars.length - 1 ? '#F0997B' : '#2D3A8C'}"></div>`)
+    .map((b, i) => {
+      const raw = b as unknown as number | { label: string; value: number };
+      const value = typeof raw === 'number' ? raw : raw.value;
+      const label = typeof raw === 'number' ? '' : raw.label;
+      return `<div class="col"><div class="bar" style="height:${Math.round(value * 100)}%;background:${i === n - 1 ? '#F0997B' : '#2D3A8C'}"></div><span class="xlbl">${esc(label)}</span></div>`;
+    })
     .join('');
   return shell(name, `
     <h1>${esc(c.title)}</h1><p class="sub">${esc(c.subtitle)}</p>
@@ -100,8 +106,10 @@ function shell(name: string, body: string): string {
   .delta{font-size:11px;color:#0F6E56;font-weight:600}
   .card{border:1px solid #ECEAE3;border-radius:9px;padding:16px}
   .caption{font-size:10px;font-weight:700;color:#6E6C64;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
-  .chart{display:flex;align-items:flex-end;gap:12px;height:140px}
-  .bar{flex:1;border-radius:3px 3px 0 0}
+  .chart{display:flex;align-items:flex-end;gap:12px;height:160px}
+  .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px}
+  .bar{width:100%;border-radius:3px 3px 0 0}
+  .xlbl{font-size:10px;color:#6E6C64}
 </style></head><body><div class="wrap">${body}</div></body></html>`;
 }
 

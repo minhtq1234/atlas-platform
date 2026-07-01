@@ -20,10 +20,20 @@ export function DashboardView({ c }: { c: DashboardContent }) {
       <div style={{ padding: '0 22px 22px' }}>
         <div style={{ border: `1px solid ${color.borderSoft}`, borderRadius: 9, padding: '15px 17px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: color.textMuted, letterSpacing: 0.5, marginBottom: 14, textTransform: 'uppercase' }}>{c.series.label}</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 96 }}>
-            {c.series.bars.map((h, i) => (
-              <div key={i} style={{ flex: 1, height: `${Math.round(h * 100)}%`, background: i === c.series.bars.length - 1 ? color.coral : i >= c.series.bars.length - 3 ? color.indigo : color.indigo200, borderRadius: '3px 3px 0 0' }} />
-            ))}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 110 }}>
+            {c.series.bars.map((b, i) => {
+              // Tolerate legacy artifacts where bars were bare numbers.
+              const raw = b as unknown as number | { label: string; value: number };
+              const value = typeof raw === 'number' ? raw : raw.value;
+              const label = typeof raw === 'number' ? '' : raw.label;
+              const n = c.series.bars.length;
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: 6 }}>
+                  <div style={{ width: '100%', height: `${Math.round(value * 100)}%`, background: i === n - 1 ? color.coral : i >= n - 3 ? color.indigo : color.indigo200, borderRadius: '3px 3px 0 0' }} />
+                  {label && <span style={{ fontSize: 10, color: color.textMuted, whiteSpace: 'nowrap' }}>{label}</span>}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

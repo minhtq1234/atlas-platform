@@ -115,3 +115,19 @@ def test_vietnamese_filename_survives_in_content_disposition():
     assert "filename*=UTF-8''" in cd
     from urllib.parse import quote
     assert quote("Báo cáo Tài chính.docx", safe="") in cd
+
+
+def test_docx_renders_sections():
+    c = DocContent.model_validate({
+        "kind": "Doc", "eyebrow": "E", "title": "T", "meta": "m",
+        "sections": [{"heading": "Requirements", "blocks": [
+            {"type": "paragraph", "text": "intro"},
+            {"type": "bullets", "items": ["a", "b"]},
+            {"type": "table", "columns": ["ID", "Req"], "rows": [["FR-1", "Login"]]},
+        ]}],
+    })
+    data = build_doc(c, "Doc")
+    doc = Document(io.BytesIO(data))
+    text = "\n".join(p.text for p in doc.paragraphs)
+    assert "Requirements" in text and "intro" in text
+    assert len(doc.tables) == 1 and doc.tables[0].rows[0].cells[0].text == "ID"

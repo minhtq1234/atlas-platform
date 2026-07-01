@@ -16,6 +16,30 @@ def _set_font(run, name: str, size: int, color: str, bold: bool = False):
     run.font.color.rgb = RGBColor.from_string(color)
 
 
+def _render_sections(doc, sections):
+    for s in sections:
+        doc.add_heading(s.heading, level=2)
+        for b in s.blocks:
+            if b.type == "paragraph":
+                doc.add_paragraph(b.text)
+            elif b.type in ("bullets", "numbers"):
+                style = "List Bullet" if b.type == "bullets" else "List Number"
+                for it in b.items:
+                    doc.add_paragraph(it, style=style)
+            elif b.type == "callout":
+                doc.add_paragraph(f"{b.value} — {b.label}")
+            elif b.type == "table":
+                t = doc.add_table(rows=1, cols=len(b.columns))
+                t.style = "Light Grid Accent 1"
+                for i, col in enumerate(b.columns):
+                    t.rows[0].cells[i].text = col
+                for row in b.rows:
+                    cells = t.add_row().cells
+                    for i in range(len(b.columns)):
+                        cells[i].text = row[i] if i < len(row) else ""
+            # 'bars' blocks are omitted from docx in v1 (best-effort text export)
+
+
 def build_doc(content: DocContent, name: str) -> bytes:
     doc = Document()
     doc.core_properties.title = name
@@ -34,9 +58,12 @@ def build_doc(content: DocContent, name: str) -> bytes:
 
     doc.add_paragraph()  # spacer
 
-    for p in content.paragraphs:
-        para = doc.add_paragraph()
-        _set_font(para.add_run(p), brand.UI_FONT, 11, brand.INK)
+    if content.sections:
+        _render_sections(doc, content.sections)
+    else:
+        for p in content.paragraphs or []:
+            para = doc.add_paragraph()
+            _set_font(para.add_run(p), brand.UI_FONT, 11, brand.INK)
 
     if content.bars:
         doc.add_paragraph()

@@ -16,7 +16,7 @@ async function seed(workdir: string, files: SeedFile[]): Promise<void> {
 /** In-memory sandbox for tests: no filesystem, records destroys. */
 export class FakeSandbox implements Sandbox {
   destroyed: string[] = [];
-  async provision(sessionId: string): Promise<SandboxHandle> {
+  async provision(sessionId: string, _files: SeedFile[] = []): Promise<SandboxHandle> {
     return {
       opencodeUrl: 'http://127.0.0.1:4096',
       workdir: `/fake/${sessionId}`,

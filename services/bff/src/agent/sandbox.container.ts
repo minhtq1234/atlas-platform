@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { config } from '../config';
 import type { Sandbox, SandboxHandle, SeedFile } from './types';
+import { safeName } from './sandbox';
 
 /** Build the `docker run` argv for a firewalled, ephemeral agent sandbox. Pure → testable. */
 export function containerArgs(name: string, hostWorkdir: string, port: number): string[] {
@@ -26,26 +27,31 @@ export function containerArgs(name: string, hostWorkdir: string, port: number): 
 export class ContainerSandbox implements Sandbox {
   async provision(sessionId: string, files: SeedFile[]): Promise<SandboxHandle> {
     const workdir = await mkdtemp(join(tmpdir(), 'atlas-box-'));
-    const inputs = join(workdir, 'inputs');
-    await mkdir(inputs, { recursive: true });
-    for (const f of files) await writeFile(join(inputs, f.name.replace(/[\\/]+/g, '-')), f.bytes);
     const name = `atlas-${sessionId.slice(0, 12)}`;
     const port = 42000 + (Math.abs(hash(sessionId)) % 2000);
-    const proc = spawn('docker', containerArgs(name, workdir, port), { stdio: 'ignore' });
-    await waitForPort(port, config.agent.timeoutMs);
-    return {
-      opencodeUrl: `http://127.0.0.1:${port}`,
-      workdir,
-      destroy: async () => {
-        await new Promise<void>((r) => {
-          const k = spawn('docker', ['rm', '-f', name], { stdio: 'ignore' });
-          k.on('exit', () => r());
-          k.on('error', () => r());
-        });
-        proc.kill('SIGKILL');
-        await rm(workdir, { recursive: true, force: true });
-      },
-    };
+    const dockerRm = () => new Promise<void>((r) => {
+      const k = spawn('docker', ['rm', '-f', name], { stdio: 'ignore' });
+      k.on('exit', () => r()); k.on('error', () => r());
+    });
+    let proc: ReturnType<typeof spawn> | undefined;
+    try {
+      const inputs = join(workdir, 'inputs');
+      await mkdir(inputs, { recursive: true });
+      for (const f of files) await writeFile(join(inputs, safeName(f.name)), f.bytes);
+      proc = spawn('docker', containerArgs(name, workdir, port), { stdio: 'ignore' });
+      await waitForPort(port, config.agent.timeoutMs);
+      const p = proc;
+      return {
+        opencodeUrl: `http://127.0.0.1:${port}`,
+        workdir,
+        destroy: async () => { await dockerRm(); p.kill('SIGKILL'); await rm(workdir, { recursive: true, force: true }); },
+      };
+    } catch (err) {
+      if (proc) proc.kill('SIGKILL');
+      await dockerRm();
+      await rm(workdir, { recursive: true, force: true });
+      throw err;
+    }
   }
 }
 

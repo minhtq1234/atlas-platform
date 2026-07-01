@@ -67,7 +67,13 @@ export interface RunDeps {
   onStep: (s: Step) => void;
   seedFiles: (req: BuildRequest) => Promise<SeedFile[]>;
   maxSteps: number;
+  timeoutMs: number;
   signal?: AbortSignal; // external Stop
+}
+
+/** Map ContextProvider passages (each already prefixed with "[name] ") to seed files. */
+export function passagesToSeedFiles(passages: string[]): SeedFile[] {
+  return passages.map((text, i) => ({ name: `passage-${i + 1}.txt`, bytes: Buffer.from(text, 'utf8') }));
 }
 
 /** Fetch attachment text (reusing the ContextProvider) as seed files. */
@@ -75,10 +81,7 @@ export async function defaultSeedFiles(req: BuildRequest): Promise<SeedFile[]> {
   const docIds = (req.uploads ?? []).map((u) => u.docId).filter((d): d is string => !!d);
   if (!docIds.length) return [];
   const passages = await contextProvider.getContext(docIds, req.brief);
-  return passages.map((text, i) => {
-    const name = req.uploads?.[i]?.name ?? `input-${i + 1}.txt`;
-    return { name: /\.[a-z0-9]+$/i.test(name) ? `${name}.txt` : `${name}.txt`, bytes: Buffer.from(text, 'utf8') };
-  });
+  return passagesToSeedFiles(passages);
 }
 
 /** Concrete deps from config: Local sandbox in dev, Container in prod. */
@@ -92,6 +95,7 @@ export function defaultRunDeps(modelId: string, onStep: (s: Step) => void, signa
     onStep,
     seedFiles: defaultSeedFiles,
     maxSteps: config.agent.maxSteps,
+    timeoutMs: config.agent.timeoutMs,
     signal,
   };
 }
@@ -109,6 +113,10 @@ export async function runAgent(input: AgentInput, deps: RunDeps): Promise<AgentP
   const onAbort = () => ctrl.abort();
   deps.signal?.addEventListener('abort', onAbort);
 
+  let timedOut = false;
+  let budgetExceeded = false;
+  const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, deps.timeoutMs);
+
   let handle: SandboxHandle | undefined;
   try {
     const files = await deps.seedFiles(req);
@@ -119,14 +127,19 @@ export async function runAgent(input: AgentInput, deps: RunDeps): Promise<AgentP
     const tools = makeTools(run, req.type, deps.onStep);
     const onEvent = (s: Step) => {
       if (s.kind !== 'task') {
-        if (++stepCount > deps.maxSteps) { ctrl.abort(); return; }
+        if (++stepCount > deps.maxSteps) { budgetExceeded = true; ctrl.abort(); return; }
       }
       deps.onStep(s);
     };
     await session.run({ prompt: buildAgentPrompt(req, input.plan), tools, onEvent, signal: ctrl.signal });
 
     if (ctrl.signal.aborted && !run.content) {
-      return { content: fallbackContent(req), viaModel: false, degradedReason: 'stopped or step budget exceeded' };
+      const degradedReason = timedOut
+        ? `agent timed out after ${deps.timeoutMs}ms`
+        : budgetExceeded
+        ? 'step budget exceeded'
+        : 'stopped';
+      return { content: fallbackContent(req), viaModel: false, degradedReason };
     }
     if (!run.content) {
       return { content: fallbackContent(req), viaModel: false, degradedReason: 'agent produced no valid artifact' };
@@ -135,6 +148,7 @@ export async function runAgent(input: AgentInput, deps: RunDeps): Promise<AgentP
   } catch (err) {
     return { content: fallbackContent(req), viaModel: false, degradedReason: (err as Error).message };
   } finally {
+    clearTimeout(timer);
     deps.signal?.removeEventListener('abort', onAbort);
     if (handle) await handle.destroy().catch(() => {});
   }

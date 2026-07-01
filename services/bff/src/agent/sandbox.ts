@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { Sandbox, SandboxHandle, SeedFile } from './types';
 
 /** Filename → safe basename (no path traversal, no separators). */
-function safeName(name: string): string {
+export function safeName(name: string): string {
   return name.replace(/[\\/]+/g, '-').replace(/\.\./g, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-').slice(0, 120) || 'file';
 }
 

@@ -40,13 +40,12 @@ function toolPartToStep(part: ToolPart): Step | null {
  * Extract Atlas custom-tool invocations from ToolPart state input so we can
  * service them in-process (update_task_list, emit_artifact).
  */
-function dispatchAtlasTool(part: ToolPart, tools: AgentTools, onEvent: (s: Step) => void): void {
+function dispatchAtlasTool(part: ToolPart, tools: AgentTools): void {
   const { tool, state } = part;
   if (state.status !== 'running' && state.status !== 'pending') return; // only dispatch at start
   const input = state.input;
   if (tool === 'update_task_list' && Array.isArray(input.tasks)) {
-    const result = tools.updateTaskList(input.tasks as never);
-    onEvent({ kind: 'task', tasks: (result as never as { tasks?: never[] }).tasks ?? (input.tasks as never) });
+    tools.updateTaskList(input.tasks as never);
   } else if (tool === 'emit_artifact' && input.content !== undefined) {
     tools.emitArtifact(input.content);
   }
@@ -98,7 +97,7 @@ export function makeOpenCodeSession(handle: SandboxHandle, modelId: string): Age
               const { part } = ev.properties;
               if (part.type === 'tool' && part.sessionID === sessionId) {
                 // Dispatch atlas-custom tools and surface steps for all tools
-                dispatchAtlasTool(part, tools, onEvent);
+                dispatchAtlasTool(part, tools);
                 const step = toolPartToStep(part);
                 if (step) onEvent(step);
               }

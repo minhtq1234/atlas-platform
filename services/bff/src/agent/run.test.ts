@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proposePlan, buildAgentPrompt, runAgent, type RunDeps } from './run';
+import { proposePlan, buildAgentPrompt, runAgent, passagesToSeedFiles, type RunDeps } from './run';
 import { FakeSandbox } from './sandbox';
 import type { BuildRequest } from '../types';
 import type { AgentSession, Step, AgentTools } from './types';
@@ -44,6 +44,7 @@ function deps(session: AgentSession, over: Partial<RunDeps> = {}): RunDeps {
     onStep: () => {},
     seedFiles: async () => [],
     maxSteps: 40,
+    timeoutMs: 180000,
     _fake: fake, // test-only handle
     ...over,
   } as RunDeps & { _fake: FakeSandbox };
@@ -93,6 +94,43 @@ describe('runAgent', () => {
       deps(session, { maxSteps: 5 }),
     );
     expect(out.viaModel).toBe(false);
-    expect(out.degradedReason).toMatch(/budget|step/i);
+    expect(out.degradedReason).toBe('step budget exceeded');
+  });
+
+  it('times out and degrades when the session stalls', async () => {
+    const session: AgentSession = { async run({ signal }) { await new Promise<void>((res) => signal.addEventListener('abort', () => res())); } };
+    const out = await runAgent(
+      { req: { brief: 'b', type: 'Doc', modelId: 'm' }, plan: { steps: ['x'] } },
+      deps(session, { timeoutMs: 20 }),
+    );
+    expect(out.viaModel).toBe(false);
+    expect(out.degradedReason).toMatch(/timed out/i);
+  });
+
+  it('reports "stopped" (not budget) on an external Stop', async () => {
+    const ac = new AbortController();
+    const session: AgentSession = {
+      async run({ signal }) {
+        await new Promise<void>((res) => {
+          if (signal.aborted) { res(); return; }
+          signal.addEventListener('abort', () => res());
+        });
+      },
+    };
+    const p = runAgent(
+      { req: { brief: 'b', type: 'Doc', modelId: 'm' }, plan: { steps: ['x'] } },
+      deps(session, { signal: ac.signal, timeoutMs: 60000 }),
+    );
+    ac.abort();
+    const out = await p;
+    expect(out.degradedReason).toBe('stopped');
+  });
+});
+
+describe('passagesToSeedFiles', () => {
+  it('maps each passage to its own seed file', () => {
+    const files = passagesToSeedFiles(['[a.md] hello', '[b.md] world', '[a.md] more']);
+    expect(files.map((f) => f.name)).toEqual(['passage-1.txt', 'passage-2.txt', 'passage-3.txt']);
+    expect(files[0].bytes.toString()).toBe('[a.md] hello');
   });
 });

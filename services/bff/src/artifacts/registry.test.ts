@@ -10,8 +10,8 @@ describe('artifact module registry', () => {
       expect(typeof m.guidance).toBe('function');
       expect(Array.isArray(m.archetypes)).toBe(true);
       expect(typeof m.exemplarKey).toBe('string');
-      // schema's kind literal matches the module type
-      expect(m.schema.shape.kind._def.value).toBe(m.type);
+      // schema's kind literal matches the module type (public ZodLiteral getter, not internals)
+      expect(m.schema.shape.kind.value).toBe(m.type);
     }
   });
   it('composes a union that parses every kind', () => {

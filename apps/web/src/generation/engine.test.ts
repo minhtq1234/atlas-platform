@@ -76,6 +76,13 @@ describe('generateArtifact (mock engine)', () => {
     expect(turn.version!.id).not.toBe(a.versions[0].id);
     expect(turn.action.message).toBeTruthy();
   });
+
+  it('does not edit the doc on small talk (offline mock answers instead)', async () => {
+    const a = await generateArtifact(req('Doc'), 'Memo');
+    const turn = await reviseArtifact(a, 'hello');
+    expect(turn.action.skill).toBe('answer');
+    expect(turn.version).toBeNull();
+  });
 });
 
 describe('makeResilientEngine — agent methods', () => {

@@ -49,9 +49,22 @@ export const mockEngine: GenerationEngine = {
     onStep({ kind: 'tool', name: 'Composing from template', status: 'ok' });
     return this.generate(req, name);
   },
-  // Offline parity with the BFF skill runtime: always an `edit` turn (no model
-  // to route clarify/plan/answer), so the app works fully without a backend.
+  // Offline parity with the BFF skill runtime (no model to route clarify/plan/answer).
+  // Guard: greetings/questions/acks must NOT mutate the doc — answer instead, so small
+  // talk never mangles the artifact when the BFF is unreachable.
   async revise(artifact, message) {
+    const m = message.trim();
+    const smallTalk =
+      m.length < 3 ||
+      /\?\s*$/.test(m) ||
+      /^(hi|hey|hello|yo|thanks|thank you|ok|okay|cool|nice|great|sup|good (morning|afternoon|evening))\b/i.test(m);
+    if (smallTalk) {
+      return {
+        action: { skill: 'answer', message: "I'm the offline preview — tell me a concrete change (e.g. “add a Q3 outlook”) and I'll apply it." },
+        version: null,
+        awaiting: 'none',
+      };
+    }
     const current = artifact.versions[artifact.currentVersion].content;
     const content = reviseContent(current, message);
     return {

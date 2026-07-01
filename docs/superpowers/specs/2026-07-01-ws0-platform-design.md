@@ -19,7 +19,7 @@ parallel. It delivers:
 4. **Doc as the deep reference pack** — the worked example every pack copies.
 5. A **pack authoring guide** + **module template** + **contract tests**.
 
-**Success:** existing behavior unchanged (suites green: BFF 52 · web 34 · Python 14);
+**Success:** existing behavior unchanged (suites green: BFF 51 · web 34 · Python 14);
 `ArtifactContent`, `SHAPE`, `generateSystem`, the archetype registry keep their public
 shape so `generate`/`skills`/`server`/`ArtifactCanvas` don't change; a new type could
 be added by dropping one module folder; a Doc generate injects a Doc exemplar.
@@ -121,8 +121,13 @@ teams clone and the proof that the contract is complete end-to-end.
   `archetypes.ts` keep their exports (re-export shims). `generate.ts`, `skills/*`, `server.ts`,
   `ArtifactCanvas`, renderers, export `/export` behave identically.
 - **Refactor is relocation, not rewrite** — guarded by the full existing suites + new contract tests.
-- **`skills/prompts.ts` SHAPE dedup** — it now reads the registry `SHAPE`; verify the revise tests
-  (`runtime.test.ts`) stay green.
+  One **accepted, intentional exception:** the SHAPE dedup below.
+- **`skills/prompts.ts` SHAPE dedup (accepted behavior change)** — today skills has its own *terser*
+  SHAPE strings that differ from `prompt.ts`'s (they drop hints like `(first slide isCover:true)`,
+  `(each row length == columns length)`). Pointing skills at the registry SHAPE (= the richer
+  `prompt.ts` set) means the **revise** prompt gains those hints — a deliberate, approved improvement,
+  not a pure relocation. Verify the revise tests (`runtime.test.ts`) stay green (they assert behavior,
+  not prompt text).
 - **Python `/export` dispatch** — verify the docx/xlsx/pptx + sectioned-doc tests stay green.
 
 ## 9. Testing
@@ -130,7 +135,7 @@ teams clone and the proof that the contract is complete end-to-end.
 - **BFF:** contract-composition + per-module conformance (`registry.test.ts`); `ArtifactContent`
   still parses all 5 kinds (move/extend existing `types.test.ts`); `generateSystem` injects the
   right module guidance + shape; exemplar `ExemplarProvider` no-op (null) + best-effort; injection
-  adds `<exemplar>` when present. Existing 52 stay green.
+  adds `<exemplar>` when present. Existing 51 stay green.
 - **Web:** renderer registry maps every kind; `ArtifactCanvas` renders each. Existing 34 green.
 - **Python:** `exemplars` store/retrieve (archetype→type→none); `/exemplars` + `/exemplars/retrieve`;
   export registry dispatches each type. Existing 14 green.

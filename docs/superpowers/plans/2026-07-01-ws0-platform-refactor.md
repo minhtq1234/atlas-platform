@@ -4,11 +4,11 @@
 
 **Goal:** Refactor Atlas's monolithic artifact code into per-type **modules behind registries** that satisfy the frozen `ArtifactTypeModule` contract — so five Artifact Pack teams can each own one type and work independently, with zero behavior change.
 
-**Architecture:** Each artifact type becomes a self-contained module (`services/bff/src/artifacts/<type>.ts`) exporting an `ArtifactTypeModule` (schema + shapeHint + guidance + archetypes + exemplarKey). A BFF registry composes them into the existing `ArtifactContent` union / `SHAPE` map / archetype registry; `types.ts`/`prompt.ts`/`archetypes.ts` become thin re-export shims so **every existing import keeps working**. Web gets a renderer registry, Python an export registry. Doc is the deep reference; the other four are mechanical relocations.
+**Architecture:** Each artifact type becomes a self-contained **module folder** (`services/bff/src/artifacts/<type>/{schema,prompt,archetypes,index}.ts`) whose `index.ts` exports an `ArtifactTypeModule` (schema + shapeHint + guidance + archetypes + exemplarKey). Folder-per-type (not a single `<type>.ts`) so a pack team owns a clean directory and CODEOWNERS globs on `artifacts/<type>/`. A BFF registry composes the modules into the existing `ArtifactContent` union / `SHAPE` map / archetype registry; `types.ts`/`prompt.ts`/`archetypes.ts` become thin re-export shims so **every existing import keeps working**. Web gets a renderer registry, Python an export registry. Doc is the deep reference; the other four are mechanical relocations.
 
 **Tech Stack:** BFF = Node + TS + zod + vitest. Web = React + vitest. Export = Python + pytest. Companion (separate plan): the exemplar toolkit (WS-0 spec §5).
 
-**Success:** existing suites stay green (BFF 51 · web 34 · Python 14); `ArtifactContent`, `SHAPE`, `generateSystem`, `shapeHint`, `ARCHETYPES`/`detectArchetype`/`archetype` keep their public shape; a new type = one new module file + one registry line.
+**Success:** existing suites stay green (BFF 51 · web 34 · Python 14); `ArtifactContent`, `SHAPE`, `generateSystem`, `shapeHint`, `ARCHETYPES`/`detectArchetype`/`archetype` keep their public shape; a new type = one new module folder + one registry line.
 
 ---
 
@@ -16,20 +16,25 @@
 - **Behavior-preserving.** This is relocation, not redesign. After each task the full suites must be green. The public exports of `types.ts`, `prompt.ts`, `archetypes.ts` are unchanged (re-export shims).
 - **Contract rule.** A module's `schema` must be a raw `z.ZodObject` (discriminated-union member — no `.refine`).
 - **Doc is deep, the other four are thin.** Move existing code verbatim; don't "improve" Deck/Sheet/Dashboard/Report here — that's their pack team's job.
-- **Registry is the only new shared file.** Packs later edit only their `<type>.ts` + renderer + export + exemplars.
+- **Registry is the only new shared file.** Packs later edit only their `artifacts/<type>/` folder + renderer + export + exemplars.
+- **Accepted behavior change (SHAPE dedup).** `skills/prompts.ts` today has its own terser SHAPE strings that DIFFER from `prompt.ts`'s (they drop hints like `(first slide isCover:true)`, `(each row length == columns length)`). Task 6 points skills at the registry SHAPE (= the richer `prompt.ts` strings), so the **revise** prompt gains those hints. This is a deliberate, approved improvement — the only intentional non-relocation in WS-0. Suites stay green (`runtime.test.ts` asserts behavior, not prompt text).
 
-## File structure (BFF)
-- Create `services/bff/src/artifacts/module.ts` — `ArtifactTypeModule` interface + `Archetype` interface (moved from `archetypes.ts`).
-- Create `services/bff/src/artifacts/doc.ts` — `Block`/`Section`/`DocContent` (moved from `types.ts`) + shapeHint + guidance + `general` archetype + the module.
-- Create `services/bff/src/artifacts/{deck,sheet,dashboard,report}.ts` — each type's schema + shapeHint + `guidance: () => ''` + `archetypes: []` + module.
-- Create `services/bff/src/artifacts/registry.ts` — `MODULES`, `ArtifactContent`, `SHAPE`, `ARCHETYPES`, `detectArchetype`, `archetype`, `moduleFor`.
-- Create `services/bff/src/artifacts/registry.test.ts` — contract-conformance + composition tests.
+## File structure (BFF) — folder-per-type
+- Create `services/bff/src/artifacts/module.ts` — `ArtifactTypeModule` interface + `Archetype` interface (moved from `archetypes.ts`). Stays at the `artifacts/` root (shared contract, Platform-owned).
+- Create `services/bff/src/artifacts/doc/` — the deep reference pack, four files:
+  - `schema.ts` — `Block`/`Section`/`DocContent` (moved from `types.ts`).
+  - `prompt.ts` — `shapeHint` string + `guidance(archetypeId, archetypes)`.
+  - `archetypes.ts` — the `general` archetype (`archetypes: Archetype[]`).
+  - `index.ts` — assembles + exports `docModule: ArtifactTypeModule`.
+- Create `services/bff/src/artifacts/{deck,sheet,dashboard,report}/` — each the same four files: `schema.ts` (the type's zod object), `prompt.ts` (`shapeHint` + `guidance = () => ''`), `archetypes.ts` (`archetypes: [] `), `index.ts` (the module).
+- Create `services/bff/src/artifacts/registry.ts` — `MODULES`, `ArtifactContent`, `SHAPE`, `ARCHETYPES`, `detectArchetype`, `archetype`, `moduleFor`. Root-level, Platform-owned.
+- Create `services/bff/src/artifacts/registry.test.ts` — contract-conformance + composition tests. Root-level.
 - Modify `services/bff/src/types.ts` — re-export `ArtifactContent` from registry; keep `ArtifactType`/`UploadRef`/`BuildRequest`/bodies/`Artifact`/`ArtifactVersion`.
 - Modify `services/bff/src/prompt.ts` — `generateSystem`/`shapeHint` read the registry.
-- Modify `services/bff/src/skills/prompts.ts` — its `SHAPE` reads the registry.
+- Modify `services/bff/src/skills/prompts.ts` — its `SHAPE` reads the registry (accepted dedup, above).
 - Modify `services/bff/src/archetypes.ts` — re-export from registry.
 - Create `apps/web/src/artifacts/renderers/registry.tsx` + rewire `ArtifactCanvas.tsx`.
-- Create `services/artifacts/app/exports/registry.py` + rewire `main.py` `/export`.
+- Create `services/artifacts/app/exports/__init__.py` (empty) + `services/artifacts/app/exports/registry.py` + rewire `main.py` `/export`.
 
 ---
 
@@ -74,13 +79,14 @@ export interface ArtifactTypeModule {
 
 ## Task 2: Doc module (the deep reference)
 
-**Files:** Create `services/bff/src/artifacts/doc.ts`
+**Files:** Create `services/bff/src/artifacts/doc/{schema,prompt,archetypes,index}.ts`
 
-- [ ] **Step 1: Create `services/bff/src/artifacts/doc.ts`** — move `Block`/`Section`/`DocContent` out of `types.ts` verbatim, add the module (schema + shapeHint copied from `prompt.ts` SHAPE.Doc + guidance from today's `generateSystem` Doc branch + the `general` archetype from `archetypes.ts`):
+Move code verbatim out of the monolith into the four-file folder. `schema.ts` gets `Block`/`Section`/`DocContent` from `types.ts`; `prompt.ts` gets `SHAPE.Doc` from `prompt.ts` + the guidance builder from today's `generateSystem` Doc branch; `archetypes.ts` gets the `general` archetype from `archetypes.ts`; `index.ts` assembles the module.
+
+- [ ] **Step 1: `services/bff/src/artifacts/doc/schema.ts`:**
 
 ```ts
 import { z } from 'zod';
-import type { ArtifactTypeModule, Archetype } from './module';
 
 export const Block = z.discriminatedUnion('type', [
   z.object({ type: z.literal('paragraph'), text: z.string().max(4000) }),
@@ -103,42 +109,69 @@ export const DocContent = z.object({
   barsLayout: z.enum(['vertical', 'horizontal']).optional(),
   callout: z.object({ value: z.string(), label: z.string() }).optional(),
 });
+```
 
-const SHAPE_HINT = `{"kind":"Doc","eyebrow":string,"title":string,"meta":string, and EITHER "paragraphs":string[] (a short memo) OR "sections":[{"heading":string,"blocks":[{"type":"paragraph","text":string}|{"type":"bullets","items":string[]}|{"type":"numbers","items":string[]}|{"type":"table","columns":string[],"rows":string[][]}|{"type":"callout","value":string,"label":string}|{"type":"bars","label":string?,"bars":[{"label":string,"value":number 0..1}]}]}] (a structured document). Only add a "bars" block when the brief has real quantitative data.}`;
+- [ ] **Step 2: `services/bff/src/artifacts/doc/prompt.ts`:**
 
-const GENERAL: Archetype = {
-  id: 'general', label: 'Document', aliases: [], sections: [],
-  guidance: 'Structure the document into the logical sections that best fit the request.',
-};
+```ts
+import type { Archetype } from '../module';
+
+export const shapeHint = `{"kind":"Doc","eyebrow":string,"title":string,"meta":string, and EITHER "paragraphs":string[] (a short memo) OR "sections":[{"heading":string,"blocks":[{"type":"paragraph","text":string}|{"type":"bullets","items":string[]}|{"type":"numbers","items":string[]}|{"type":"table","columns":string[],"rows":string[][]}|{"type":"callout","value":string,"label":string}|{"type":"bars","label":string?,"bars":[{"label":string,"value":number 0..1}]}]}] (a structured document). Only add a "bars" block when the brief has real quantitative data.}`;
+
+/** Type/archetype steering appended to the prompt ('' when none). */
+export function guidance(archetypeId: string | undefined, archetypes: Archetype[]): string {
+  const a = archetypes.find((x) => x.id === archetypeId);
+  if (!a || !a.sections.length) return '';
+  return `Use these sections in order: ${a.sections.join('; ')}.\n${a.guidance}`;
+}
+```
+
+- [ ] **Step 3: `services/bff/src/artifacts/doc/archetypes.ts`:**
+
+```ts
+import type { Archetype } from '../module';
+
+export const archetypes: Archetype[] = [
+  {
+    id: 'general', label: 'Document', aliases: [], sections: [],
+    guidance: 'Structure the document into the logical sections that best fit the request.',
+  },
+];
+```
+
+- [ ] **Step 4: `services/bff/src/artifacts/doc/index.ts`:**
+
+```ts
+import type { ArtifactTypeModule } from '../module';
+import { DocContent } from './schema';
+import { shapeHint, guidance } from './prompt';
+import { archetypes } from './archetypes';
 
 export const docModule: ArtifactTypeModule = {
   type: 'Doc',
   schema: DocContent,
-  shapeHint: SHAPE_HINT,
-  archetypes: [GENERAL],
+  shapeHint,
+  archetypes,
   exemplarKey: 'doc',
-  guidance(archetypeId) {
-    const a = this.archetypes.find((x) => x.id === archetypeId);
-    if (!a || !a.sections.length) return '';
-    return `Use these sections in order: ${a.sections.join('; ')}.\n${a.guidance}`;
-  },
+  guidance: (archetypeId) => guidance(archetypeId, archetypes),
 };
 ```
 
-- [ ] **Step 2: Typecheck** — `cd services/bff && npm run typecheck` → PASS.
-- [ ] **Step 3: Commit** — `git add services/bff/src/artifacts/doc.ts && git commit -m "feat(platform): Doc module (deep reference)"`
+- [ ] **Step 5: Typecheck** — `cd services/bff && npm run typecheck` → PASS.
+- [ ] **Step 6: Commit** — `git add services/bff/src/artifacts/doc && git commit -m "feat(platform): Doc module (deep reference)"`
 
 ---
 
 ## Task 3: Deck / Sheet / Dashboard / Report modules (thin, mechanical)
 
-**Files:** Create `services/bff/src/artifacts/{deck,sheet,dashboard,report}.ts`
+**Files:** Create `services/bff/src/artifacts/{deck,sheet,dashboard,report}/{schema,prompt,archetypes,index}.ts`
 
-- [ ] **Step 1: Create each module** by moving that type's schema out of `types.ts` verbatim and wrapping it. Each `guidance: () => ''`, `archetypes: []`, `exemplarKey: '<type>'`, `shapeHint` copied from `prompt.ts` `SHAPE[type]`. Example — `deck.ts` (do the analogous file for sheet/dashboard/report):
+Each thin module is the same four-file folder as Doc, but with an empty archetype list and no guidance. Move each type's zod object out of `types.ts` verbatim (`schema.ts`), copy its `SHAPE[type]` string from `prompt.ts` (`prompt.ts`), ship `archetypes: []` (`archetypes.ts`), assemble in `index.ts`. Example — the `deck/` folder (do the analogous folder for sheet/dashboard/report):
+
+- [ ] **Step 1: `services/bff/src/artifacts/deck/schema.ts`:**
 
 ```ts
 import { z } from 'zod';
-import type { ArtifactTypeModule } from './module';
 
 export const Slide = z.object({
   title: z.string(),
@@ -153,19 +186,47 @@ export const DeckContent = z.object({
   subtitle: z.string(),
   slides: z.array(Slide).min(1).max(100),
 });
+```
+
+- [ ] **Step 2: `services/bff/src/artifacts/deck/prompt.ts`:**
+
+```ts
+export const shapeHint = `{"kind":"Deck","eyebrow":string,"title":string,"subtitle":string,"slides":[{"title":string,"bullets":string[]?,"isCover":boolean?,"subtitle":string?}] (first slide isCover:true)}`;
+export const guidance = (): string => '';
+```
+
+- [ ] **Step 3: `services/bff/src/artifacts/deck/archetypes.ts`:**
+
+```ts
+import type { Archetype } from '../module';
+export const archetypes: Archetype[] = [];
+```
+
+- [ ] **Step 4: `services/bff/src/artifacts/deck/index.ts`:**
+
+```ts
+import type { ArtifactTypeModule } from '../module';
+import { DeckContent } from './schema';
+import { shapeHint, guidance } from './prompt';
+import { archetypes } from './archetypes';
+
 export const deckModule: ArtifactTypeModule = {
   type: 'Deck',
   schema: DeckContent,
-  shapeHint: `{"kind":"Deck","eyebrow":string,"title":string,"subtitle":string,"slides":[{"title":string,"bullets":string[]?,"isCover":boolean?,"subtitle":string?}] (first slide isCover:true)}`,
-  archetypes: [],
+  shapeHint,
+  archetypes,
   exemplarKey: 'deck',
-  guidance: () => '',
+  guidance,
 };
 ```
-`sheet.ts` (`SheetContent` from types.ts:46-51, shapeHint from prompt.ts:8), `dashboard.ts` (types.ts:53-62, prompt.ts:9), `report.ts` (types.ts:64-71, prompt.ts:10) follow the identical pattern — copy the exact zod object and shapeHint string.
 
-- [ ] **Step 2: Typecheck** — `cd services/bff && npm run typecheck` → PASS.
-- [ ] **Step 3: Commit** — `git add services/bff/src/artifacts/{deck,sheet,dashboard,report}.ts && git commit -m "feat(platform): thin Deck/Sheet/Dashboard/Report modules"`
+- [ ] **Step 5: Repeat for sheet / dashboard / report** — identical four-file pattern, copying the exact zod object and shapeHint string:
+  - `sheet/` — `SheetContent` (types.ts:46-51), shapeHint (prompt.ts:8), `exemplarKey: 'sheet'`.
+  - `dashboard/` — `DashboardContent` (types.ts:53-62), shapeHint (prompt.ts:9), `exemplarKey: 'dashboard'`.
+  - `report/` — `ReportContent` (types.ts:64-71), shapeHint (prompt.ts:10), `exemplarKey: 'report'`.
+
+- [ ] **Step 6: Typecheck** — `cd services/bff && npm run typecheck` → PASS.
+- [ ] **Step 7: Commit** — `git add services/bff/src/artifacts/{deck,sheet,dashboard,report} && git commit -m "feat(platform): thin Deck/Sheet/Dashboard/Report modules"`
 
 ---
 
@@ -299,7 +360,7 @@ export function generateSystem(type: ArtifactType, lang: 'en' | 'vi', arch?: Arc
 ```
 (Keep `INJECTION_NOTE` + `generateUser` unchanged.)
 
-- [ ] **Step 3: `skills/prompts.ts`** — delete its local `SHAPE` map; `import { SHAPE } from '../artifacts/registry';` and use it where `SHAPE[type]` is referenced. (Its `z_ArtifactType` local type stays.)
+- [ ] **Step 3: `skills/prompts.ts`** — delete its local `SHAPE` map; `import { SHAPE } from '../artifacts/registry';` and use it where `SHAPE[type]` is referenced. (Its `z_ArtifactType` local type stays.) **Accepted behavior change:** the registry SHAPE is the richer `prompt.ts` set, so the revise prompt now carries hints the old terser skills strings dropped (`(first slide isCover:true)`, `(each row length == columns length)`, etc.). This is the deliberate dedup approved for WS-0 — verify `runtime.test.ts` stays green (it asserts behavior, not prompt text).
 
 - [ ] **Step 4: `archetypes.ts`** — replace its body with a re-export:
 ```ts
@@ -349,6 +410,7 @@ export function renderArtifact(content: ArtifactContent, page: number) {
 
 **Files:** Create `services/artifacts/app/exports/registry.py` · Modify `services/artifacts/app/main.py`
 
+- [ ] **Step 0: Create the package** — `services/artifacts/app/exports/__init__.py` (empty file), so `from .exports.registry import EXPORTERS` resolves.
 - [ ] **Step 1: Create `services/artifacts/app/exports/registry.py`** — map each Office kind to its builder + extension (from `main.py`'s `KIND_EXT` + the `if kind ==` chain):
 
 ```python
@@ -401,7 +463,9 @@ return Response(content=data, media_type=MIME[ext], headers={"Content-Dispositio
 
 **Spec coverage (WS-0 §2–§4, §7–§10):** contract → Task 1; registries → Tasks 4,7,8; thin-migrate all 5 → Tasks 2,3; API-stable shims → Task 6; contract tests → Task 5; Doc deep reference → Task 2. **The exemplar toolkit (§5) + Doc exemplars/seeds (§6) + authoring guide (§7) are a SEPARATE companion plan** (they're additive and mirror the built attachments pattern) — flagged, not dropped.
 
-**Placeholder scan:** Deck/Sheet/Dashboard/Report modules (Task 3) show the Deck file in full + exact source line refs for the other three (pure verbatim relocation of code quoted in this session) — the executor copies the exact zod objects/shapeHints from `types.ts`/`prompt.ts`. No TBD/soft steps.
+**Placeholder scan:** Deck/Sheet/Dashboard/Report modules (Task 3) show the full `deck/` four-file folder + exact source line refs for the other three (pure verbatim relocation of code quoted in this session) — the executor copies the exact zod objects/shapeHints from `types.ts`/`prompt.ts` into `schema.ts`/`prompt.ts`. No TBD/soft steps.
+
+**Accepted deviation from "pure relocation":** one intentional behavior change — the `skills/prompts.ts` SHAPE dedup (Task 6 Step 3), which enriches the revise prompt. Approved for WS-0; called out in the design invariants + Task 6. Everything else is byte-for-byte relocation.
 
 **Type consistency:** `ArtifactTypeModule` (module.ts) fields — `type/schema/shapeHint/guidance/archetypes/exemplarKey` — are used identically in every module + the registry + the contract test. `ArtifactContent`/`SHAPE`/`moduleFor`/`ARCHETYPES`/`detectArchetype`/`archetype` are defined once (registry) and re-exported by the shims; consumers unchanged.
 

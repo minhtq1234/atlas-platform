@@ -13,6 +13,7 @@ export const DocContent = z.object({
   meta: z.string(),
   paragraphs: z.array(z.string()).min(1).max(200),
   bars: z.array(z.object({ label: z.string(), value: z.number() })).max(50).optional(),
+  barsLayout: z.enum(['vertical', 'horizontal']).optional(),
   callout: z.object({ value: z.string(), label: z.string() }).optional(),
 });
 

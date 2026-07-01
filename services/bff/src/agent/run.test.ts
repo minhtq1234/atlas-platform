@@ -21,7 +21,7 @@ describe('buildAgentPrompt', () => {
     expect(p).toContain('Rebuild the deck');
     expect(p).toContain('Parse the file');
     expect(p).toContain('"kind":"Deck"');       // shapeHint(Deck)
-    expect(p).toContain('emit_artifact');
+    expect(p).toMatch(/match EXACTLY this shape/i);
     expect(p).toMatch(/untrusted user data/i);  // INJECTION_NOTE
   });
 });

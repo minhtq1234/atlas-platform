@@ -46,13 +46,13 @@ export async function proposePlan(req: BuildRequest, context: string[]): Promise
 /** The instruction handed to the in-sandbox agent. */
 export function buildAgentPrompt(req: BuildRequest, plan: Plan): string {
   return [
-    'You are Atlas, an autonomous builder agent working in a sandbox with full dev tools.',
-    'Attached files (if any) are in ./inputs. Use bash/python/read to derive facts from them.',
-    'Follow this plan, calling update_task_list to mark progress:',
+    'You are Atlas, a builder agent. Produce ONE business artifact and save it as JSON.',
+    'Work efficiently: read any input files, then write the artifact file. Avoid unnecessary steps.',
+    'Plan:',
     plan.steps.map((s, i) => `${i + 1}. ${s}`).join('\n'),
-    `When done, call emit_artifact with a ${req.type} matching EXACTLY this shape:`,
+    `The artifact is a ${req.type} and its JSON must match EXACTLY this shape:`,
     shapeHint(req.type),
-    'Numbers must be internally consistent and grounded in the inputs.',
+    'Numbers must be internally consistent and grounded in any inputs.',
     INJECTION_NOTE,
     `<brief>${req.brief}</brief>`,
     req.lang === 'vi' ? 'Write all human-readable text in Vietnamese.' : 'Write all human-readable text in English.',
@@ -88,7 +88,7 @@ export async function defaultSeedFiles(req: BuildRequest): Promise<SeedFile[]> {
 export function defaultRunDeps(modelId: string, onStep: (s: Step) => void, signal?: AbortSignal): RunDeps {
   const sandbox = config.agent.sandbox === 'container'
     ? new ContainerSandbox()
-    : new LocalSandbox(config.openCode.url, config.agent.workRoot);
+    : new LocalSandbox(config.openCode.url, config.openCode.projectDir);
   return {
     provision: sandbox.provision.bind(sandbox),
     makeSession: (h) => makeOpenCodeSession(h, modelId),
@@ -131,6 +131,8 @@ export async function runAgent(input: AgentInput, deps: RunDeps): Promise<AgentP
       }
       deps.onStep(s);
     };
+    // Seed the working-steps checklist from the confirmed plan; native tool chips stream below it.
+    deps.onStep({ kind: 'task', tasks: input.plan.steps.map((t, i) => ({ id: String(i), title: t, status: 'pending' as const })) });
     await session.run({ prompt: buildAgentPrompt(req, input.plan), tools, onEvent, signal: ctrl.signal });
 
     if (ctrl.signal.aborted && !run.content) {
@@ -146,7 +148,14 @@ export async function runAgent(input: AgentInput, deps: RunDeps): Promise<AgentP
     }
     return { content: run.content, viaModel: true };
   } catch (err) {
-    return { content: fallbackContent(req), viaModel: false, degradedReason: (err as Error).message };
+    const degradedReason = timedOut
+      ? `agent timed out after ${deps.timeoutMs}ms`
+      : budgetExceeded
+      ? 'step budget exceeded'
+      : ctrl.signal.aborted
+      ? 'stopped'
+      : (err as Error).message;
+    return { content: fallbackContent(req), viaModel: false, degradedReason };
   } finally {
     clearTimeout(timer);
     deps.signal?.removeEventListener('abort', onAbort);

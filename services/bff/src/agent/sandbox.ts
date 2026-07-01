@@ -17,27 +17,33 @@ async function seed(workdir: string, files: SeedFile[]): Promise<void> {
 export class FakeSandbox implements Sandbox {
   destroyed: string[] = [];
   async provision(sessionId: string, _files: SeedFile[] = []): Promise<SandboxHandle> {
+    const dir = `/fake/${sessionId}`;
     return {
       opencodeUrl: 'http://127.0.0.1:4096',
-      workdir: `/fake/${sessionId}`,
+      workdir: dir,
+      agentDir: dir,
+      projectDir: '/fake',
       destroy: async () => { this.destroyed.push(sessionId); },
     };
   }
 }
 
 /**
- * Dev/CI sandbox: a per-session workdir on the host, pointed at an already-running
- * local `opencode serve`. NO isolation — for building/testing the loop only.
+ * Dev/CI sandbox: a per-run workdir NESTED under the OpenCode project dir (so the
+ * greennode provider in agent/opencode.json resolves for the session), pointed at an
+ * already-running local `opencode serve`. NO isolation — for building/testing the loop.
  */
 export class LocalSandbox implements Sandbox {
-  constructor(private opencodeUrl: string, private root: string) {}
+  constructor(private opencodeUrl: string, private projectDir: string) {}
   async provision(sessionId: string, files: SeedFile[]): Promise<SandboxHandle> {
-    const workdir = join(this.root, safeName(sessionId));
+    const workdir = join(this.projectDir, '.runs', safeName(sessionId));
     await mkdir(workdir, { recursive: true });
     await seed(workdir, files);
     return {
       opencodeUrl: this.opencodeUrl,
       workdir,
+      agentDir: workdir, // same host filesystem locally
+      projectDir: this.projectDir,
       destroy: async () => { await rm(workdir, { recursive: true, force: true }); },
     };
   }

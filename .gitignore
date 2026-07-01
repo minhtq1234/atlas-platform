@@ -6,3 +6,6 @@ dist/
 .greennode.json
 .greennode_token_cache
 .env
+
+# Per-run agent sandbox workdirs (multi-step agent, local sandbox)
+agent/.runs/

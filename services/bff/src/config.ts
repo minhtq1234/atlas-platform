@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 // Environment configuration. In prod these come from the vault, never code.
 export const config = {
   port: Number(process.env.PORT ?? 8787),
@@ -28,6 +30,9 @@ export const config = {
     url: process.env.OPENCODE_URL ?? 'http://127.0.0.1:4096',
     providerId: process.env.OPENCODE_PROVIDER ?? 'greennode',
     agent: process.env.OPENCODE_AGENT ?? 'hr',
+    // The project dir OpenCode resolves providers/agents from. The agent sandbox's
+    // per-run workdir nests under here so agent/opencode.json (the provider) resolves.
+    projectDir: process.env.OPENCODE_PROJECT_DIR ?? resolve(process.cwd(), '..', '..', 'agent'),
     // Bound the OpenCode call — it blocks/retries when its provider is down.
     timeoutMs: Number(process.env.OPENCODE_TIMEOUT_MS ?? 60000),
   },

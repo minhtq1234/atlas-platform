@@ -17,8 +17,12 @@ export interface SeedFile { name: string; bytes: Buffer; }
 export interface SandboxHandle {
   /** OpenCode server URL for this session's sandbox. */
   opencodeUrl: string;
-  /** Absolute workdir seeded with inputs. */
+  /** Host-side workdir the BFF seeds inputs into and reads outputs from. */
   workdir: string;
+  /** Path the in-sandbox agent uses for I/O (== workdir locally; /workspace in a container). */
+  agentDir: string;
+  /** Directory OpenCode resolves the project (provider/agents) from for this session. */
+  projectDir: string;
   destroy(): Promise<void>;
 }
 

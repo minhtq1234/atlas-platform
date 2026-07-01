@@ -43,7 +43,9 @@ export class ContainerSandbox implements Sandbox {
       const p = proc;
       return {
         opencodeUrl: `http://127.0.0.1:${port}`,
-        workdir,
+        workdir,                 // host mount (BFF seeds/reads here)
+        agentDir: '/workspace',  // path the agent sees inside the container
+        projectDir: '/workspace',
         destroy: async () => { await dockerRm(); p.kill('SIGKILL'); await rm(workdir, { recursive: true, force: true }); },
       };
     } catch (err) {

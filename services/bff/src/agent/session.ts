@@ -1,135 +1,107 @@
 import { createOpencodeClient } from '@opencode-ai/sdk';
-import type { Event, ToolPart } from '@opencode-ai/sdk';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { config } from '../config';
 import { toStep } from './steps';
-import type { AgentSession, AgentTools, SandboxHandle, Step } from './types';
+import type { AgentSession, SandboxHandle } from './types';
 
-/**
- * Translate a real SDK ToolPart into a RawToolEvent shape that toStep accepts.
- * The SDK's EventMessagePartUpdated carries a Part; when that Part is a ToolPart
- * (type === "tool") we map its state into the args/output/state that toStep expects.
- */
-function toolPartToStep(part: ToolPart): Step | null {
-  const { tool, state } = part;
-  // Map SDK ToolState → RawToolEvent's state/args/output fields
-  let rawState: 'start' | 'completed' | 'error';
-  let args: Record<string, unknown> | undefined;
-  let output: string | undefined;
+// Initial write + up to (MAX_ATTEMPTS - 1) self-heal re-prompts.
+const MAX_ATTEMPTS = 3;
 
-  if (state.status === 'pending') {
-    rawState = 'start';
-    args = state.input;
-  } else if (state.status === 'running') {
-    rawState = 'start';
-    args = state.input;
-  } else if (state.status === 'completed') {
-    rawState = 'completed';
-    args = state.input;
-    output = state.output;
-  } else {
-    // error
-    rawState = 'error';
-    args = state.input;
-    output = state.error;
-  }
-
-  return toStep({ type: 'tool', name: tool, state: rawState, args, output });
+/** Loose view of the OpenCode event-stream items we render as working-steps chips. */
+interface LoosePart {
+  type?: string;
+  tool?: string;
+  sessionID?: string;
+  state?: { status?: string; input?: Record<string, unknown>; output?: string; error?: string };
 }
+interface LooseEvent { type?: string; properties?: { part?: LoosePart } }
 
 /**
- * Extract Atlas custom-tool invocations from ToolPart state input so we can
- * service them in-process (update_task_list, emit_artifact).
- */
-function dispatchAtlasTool(part: ToolPart, tools: AgentTools): void {
-  const { tool, state } = part;
-  if (state.status !== 'running' && state.status !== 'pending') return; // only dispatch at start
-  const input = state.input;
-  if (tool === 'update_task_list' && Array.isArray(input.tasks)) {
-    tools.updateTaskList(input.tasks as never);
-  } else if (tool === 'emit_artifact' && input.content !== undefined) {
-    tools.emitArtifact(input.content);
-  }
-}
-
-/**
- * Real AgentSession over an OpenCode server running inside the sandbox.
+ * Real AgentSession over an OpenCode server.
  *
- * Event flow:
- *   1. Subscribe to the global /event SSE stream (filtered by sessionID).
- *   2. On each EventMessagePartUpdated where part.type === "tool":
- *      - Route atlas custom tools (emit_artifact, update_task_list) in-process.
- *      - Translate all tool parts to display Steps via toStep.
- *   3. Await EventSessionIdle (or EventSessionStatus {status.type: "idle"}) for
- *      the created session to signal completion, then resolve.
+ * Capture is file-based (no custom OpenCode tool needed): the `builder` agent writes
+ * its artifact JSON to `<agentDir>/out/artifact.json` with its native `write` tool.
+ * `session.prompt` resolves when the agent turn completes, so afterward we read
+ * `<workdir>/out/artifact.json`, validate via `tools.emitArtifact`, and on failure
+ * re-prompt with the error (bounded self-heal). Native tool activity is streamed to
+ * the working-steps UI. The session is created with `directory: projectDir` so
+ * OpenCode resolves the greennode provider + `builder` agent from agent/opencode.json.
  *
- * LIVE-GATED: the event filtering and ToolPart → Step translation are verified in
- * Task 13. CI uses the mock session (FakeSandbox + mockSession) from run.test.ts.
- *
- * SDK signatures relied on:
- *   client.event.subscribe(options?: Options<EventSubscribeData>):
- *     Promise<ServerSentEventsResult<EventSubscribeResponses, unknown>>
- *   where ServerSentEventsResult = { stream: AsyncGenerator<Event, void, unknown> }
- *   and Event = EventMessagePartUpdated | EventSessionIdle | EventSessionStatus | …
+ * LIVE-GATED: unit tests use the mock session (FakeSandbox) from run.test.ts.
  */
 export function makeOpenCodeSession(handle: SandboxHandle, modelId: string): AgentSession {
   const client = createOpencodeClient({ baseUrl: handle.opencodeUrl });
   return {
     async run({ prompt, tools, onEvent, signal }) {
-      // 1. Create the session
-      const created = await client.session.create({ body: { title: 'atlas-agent' }, signal });
+      const created = await client.session.create({
+        query: { directory: handle.projectDir },
+        body: { title: 'atlas-agent' },
+      });
       if (created.error || !created.data) throw new Error('OpenCode session.create failed');
-      const sessionId = created.data.id;
+      const id = created.data.id;
 
-      try {
-        // 2. Subscribe to the global event stream; filter to this session
-        const subscribed = await client.event.subscribe({ signal }).catch(() => null);
-
-        // 3. Pump events in the background — resolves when session goes idle or signal aborts
-        let resolveIdle!: () => void;
-        const idlePromise = new Promise<void>((res) => { resolveIdle = res; });
-
-        const pumpPromise = (async () => {
-          if (!subscribed?.stream) return;
-          for await (const ev of subscribed.stream as AsyncIterable<Event>) {
+      // Best-effort: stream native tool activity as working-steps chips.
+      const pumpCtrl = new AbortController();
+      const events = await client.event.subscribe({ signal: pumpCtrl.signal }).catch(() => null);
+      const pump = (async () => {
+        const stream = events?.stream as AsyncIterable<LooseEvent> | undefined;
+        if (!stream) return;
+        try {
+          for await (const ev of stream) {
             if (signal.aborted) break;
-
-            if (ev.type === 'message.part.updated') {
-              const { part } = ev.properties;
-              if (part.type === 'tool' && part.sessionID === sessionId) {
-                // Dispatch atlas-custom tools and surface steps for all tools
-                dispatchAtlasTool(part, tools);
-                const step = toolPartToStep(part);
-                if (step) onEvent(step);
-              }
-            } else if (
-              (ev.type === 'session.idle' && ev.properties.sessionID === sessionId) ||
-              (ev.type === 'session.status' &&
-                ev.properties.sessionID === sessionId &&
-                ev.properties.status.type === 'idle')
-            ) {
-              resolveIdle();
-              break;
-            }
+            if (ev.type !== 'message.part.updated') continue;
+            const part = ev.properties?.part;
+            if (!part || part.type !== 'tool' || part.sessionID !== id) continue;
+            const s = part.state?.status;
+            const state = s === 'completed' ? 'completed' : s === 'error' ? 'error' : 'start';
+            const step = toStep({ type: 'tool', name: part.tool, state, args: part.state?.input, output: part.state?.output ?? part.state?.error });
+            if (step) onEvent(step);
           }
-          resolveIdle(); // ensure we don't hang if stream ends without idle
-        })();
+        } catch { /* stream closed */ }
+      })();
 
-        // 4. Fire the prompt with the builder agent
+      const outPath = join(handle.workdir, 'out', 'artifact.json');
+      const ask = async (text: string) => {
         const res = await client.session.prompt({
-          path: { id: sessionId },
+          path: { id },
           body: {
             model: { providerID: config.openCode.providerId, modelID: modelId.replace(/^gn-/, '') },
             agent: 'builder',
-            parts: [{ type: 'text', text: prompt }],
+            parts: [{ type: 'text', text }],
           },
           signal,
         });
         if (res.error) throw new Error('OpenCode agent prompt failed');
+      };
+      const capture = async (): Promise<boolean> => {
+        let raw: string;
+        try { raw = await readFile(outPath, 'utf8'); } catch { return false; }
+        let parsed: unknown;
+        try { parsed = JSON.parse(raw); } catch { return false; }
+        return tools.emitArtifact(parsed).ok;
+      };
 
-        // 5. Wait for the session to go idle (agent done) or for abort
-        await Promise.race([idlePromise, pumpPromise]);
+      try {
+        const preamble = [
+          `Your working directory is ${handle.agentDir}.`,
+          `Any input files are in ${handle.agentDir}/inputs — read them to derive facts.`,
+          `Save your FINAL artifact as a single JSON object to ${handle.agentDir}/out/artifact.json using your write tool (create the out/ directory). Do not print the JSON in chat.`,
+        ].join('\n');
+        await ask(`${preamble}\n\n${prompt}`);
+
+        for (let attempt = 1; attempt < MAX_ATTEMPTS && !signal.aborted; attempt++) {
+          if (await capture()) return;
+          await ask(
+            `I could not read a valid artifact from ${handle.agentDir}/out/artifact.json. ` +
+              `Write (or fix) that exact file as a single valid JSON object matching the required shape, then stop.`,
+          );
+        }
+        await capture(); // final read after the last re-prompt (uncaptured → runAgent degrades)
       } finally {
-        await client.session.delete({ path: { id: sessionId } }).catch(() => {});
+        pumpCtrl.abort();
+        await pump.catch(() => {});
+        await client.session.delete({ path: { id } }).catch(() => {});
       }
     },
   };

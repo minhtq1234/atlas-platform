@@ -58,17 +58,25 @@ export const moduleFor = (t: ArtifactType) => MODULES.find(m => m.type === t)!;
 ```
 `types.ts` re-exports `ArtifactContent` (+ `ArtifactType`, `Artifact`, `ArtifactVersion`,
 bodies) from the registry so **every existing import keeps working**. `prompt.ts`
-`generateSystem` reads `SHAPE`/`moduleFor(type).guidance(archetypeId)`; `skills/prompts.ts`
+`generateSystem` reads `SHAPE`/`moduleFor(type).guidance(arch)`; `skills/prompts.ts`
 reads the same `SHAPE` (kills today's duplicated SHAPE map); `archetypes.ts` re-exports
 the registry's `ARCHETYPES`/`detectArchetype`/`archetype`.
 
-**Web — `apps/web/src/artifacts/renderers/registry.ts`:** `RENDERERS: Record<kind, Component>`;
-`ArtifactCanvas` looks up `RENDERERS[content.kind]` instead of a switch. Each `<Type>View.tsx`
+**Web — `apps/web/src/artifacts/renderers/registry.tsx`** (as-built)**:** exports
+`renderArtifact(content, page)` — a `kind` switch mapping each type to its `<Type>View`;
+`ArtifactCanvas` delegates to it (keeping `pageCount`/`pageLabel`). Each `<Type>View.tsx`
 stays where it is (already per-type).
 
-**Python — `services/artifacts/app/exports/registry.py`:** `EXPORTERS: dict[type,str→bytes]`;
-`main.py` `/export` dispatches via the registry instead of the `if kind==…` chain. Existing
-`docx_builder`/`xlsx_builder`/`pptx_builder` become `<type>_export.py` (or are wrapped).
+**Python — `services/artifacts/app/exports/registry.py`** (as-built)**:** `EXPORTERS:
+dict[kind → (ext, builder)]` importing the existing `build_doc`/`build_sheet`/`build_deck`
+from `docx_builder`/`xlsx_builder`/`pptx_builder` (kept as-is, not renamed); `main.py`
+`/export` dispatches via the registry instead of the `if kind==…` chain (415/422 unchanged).
+
+**Adding a 6th type** (beyond the v1 five — a non-goal today) touches, besides the module
+folder: the `ArtifactContent` union list + `MODULES` entry (registry), the `ArtifactType`
+enums in `services/bff/src/types.ts` and `apps/web/src/types.ts` (and the `z_ArtifactType`
+alias in `skills/prompts.ts`), the web renderer switch + a `<Type>View`, and `EXPORTERS`
+(if it exports to Office). Small, but more than one line — the enums are the extra bit.
 
 ## 4. Thin migration (all 5 types)
 

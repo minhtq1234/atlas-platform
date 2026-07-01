@@ -82,6 +82,8 @@ export interface DocContent {
 export interface Slide {
   title: string;
   bullets?: string[];
+  notes?: string;
+  layout?: 'section' | 'statement';
   isCover?: boolean;
   subtitle?: string;
 }

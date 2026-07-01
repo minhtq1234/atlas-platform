@@ -19,7 +19,9 @@ export interface ArtifactTypeModule {
   type: ArtifactType;
   schema: z.ZodObject<{ kind: z.ZodLiteral<ArtifactType> } & Record<string, z.ZodTypeAny>>;
   shapeHint: string;
-  guidance(archetypeId?: string): string;
+  /** Steering text for a resolved archetype ('' when none applies). The caller resolves
+   *  the archetype (registry `archetype(id)`); the module formats its steering. */
+  guidance(arch?: Archetype): string;
   archetypes: Archetype[];
   exemplarKey: string;
 }

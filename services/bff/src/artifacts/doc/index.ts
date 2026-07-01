@@ -9,5 +9,5 @@ export const docModule: ArtifactTypeModule = {
   shapeHint,
   archetypes,
   exemplarKey: 'doc',
-  guidance: (archetypeId) => guidance(archetypeId, archetypes),
+  guidance,
 };

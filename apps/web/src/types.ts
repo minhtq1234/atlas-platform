@@ -34,6 +34,12 @@ export interface UploadRef {
   mime: string;
   /** Parsed text/preview used by the (mock) engine. */
   excerpt?: string;
+  /** Backend attachment id (set after /api/attachments parses the file). */
+  docId?: string;
+  /** Extracted character count, used for the chip's "· Nk chars" hint. */
+  chars?: number;
+  /** Short text preview returned by the extractor. */
+  preview?: string;
 }
 
 /** Everything the generation engine needs to build an artifact. */

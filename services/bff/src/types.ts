@@ -73,6 +73,7 @@ export const UploadRef = z.object({
   sizeBytes: z.number(),
   mime: z.string().max(200),
   excerpt: z.string().max(50000).optional(),
+  docId: z.string().max(200).optional(),
 });
 
 export const BuildRequest = z.object({

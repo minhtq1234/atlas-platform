@@ -25,11 +25,12 @@ export function generateSystem(type: ArtifactType, lang: 'en' | 'vi'): string {
   ].join('\n');
 }
 
-export function generateUser(req: BuildRequest): string {
+export function generateUser(req: BuildRequest, context: string[] = []): string {
   const lines = [`<brief>${req.brief}</brief>`];
   if (req.sourceKey) lines.push(`<source>${req.sourceKey}</source>`);
   if (req.brief_chips?.length) lines.push(`<constraints>${req.brief_chips.join(', ')}</constraints>`);
-  if (req.uploads?.length) lines.push(`<files>${req.uploads.map((u) => u.name).join(', ')}</files>`);
+  if (context.length) lines.push(`<context>\n${context.join('\n---\n')}\n</context>`);
+  else if (req.uploads?.length) lines.push(`<files>${req.uploads.map((u) => u.name).join(', ')}</files>`);
   return lines.join('\n');
 }
 

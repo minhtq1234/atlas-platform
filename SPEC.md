@@ -29,7 +29,7 @@ Folds in and replaces: the former `Plan_Atlas-Web-Phase1.md`, `UX-Spec_Atlas-Hom
 
 **Screens & components (all built unless noted):**
 - **Home** — top bar (logo · Library · **Connect data sources** · avatar); hero orb + greeting; **composer**; template gallery; recent artifacts.
-- **Composer** — free-text brief + control row: **output type** (Doc/Deck/Sheet/Dashboard/Report), **data source** (picker → Connect overlay; UI-only for now), **model** (GreenNode picker, 3 models), **📎 attach** (upload; metadata captured, parsing deferred), send.
+- **Composer** — free-text brief + control row: **output type** (Doc/Deck/Sheet/Dashboard/Report), **data source** (picker → Connect overlay; UI-only for now), **model** (GreenNode picker, 3 models), **📎 attach** (file **parsed to text and fed as generation context** — MD/TXT/CSV/DOCX/XLSX/PPTX/PDF; see §8), send.
 - **Configure overlay** — live per-type preview + chat-to-tailor (applied chips, quick chips incl. *In Vietnamese*) + Build. `role=dialog`, Esc-to-close.
 - **Build overlay** — real **SSE-streamed** stage labels + eased progress → routes to Studio; degraded/offline surfaced as a toast.
 - **Studio** — chat-left + canvas-right, driven by the **agent-skills** layer: every turn returns a typed Action (`clarify | plan | edit | answer`). The chat **edits** (→ new version), **answers** questions, **clarifies** ambiguous asks with tappable **option chips** ("make it longer" → offers concrete options), or proposes a **plan card + Confirm** for big/multi-step changes (adaptive: acts directly when the request is clear). Context-aware via OpenCode session reuse; plan-confirm state persists. Contract/runtime: `services/bff/src/skills/` + spec `docs/superpowers/specs/2026-07-01-agent-skills-design.md`. Version history; pager + filmstrip (decks); zoom; View/Edit toggle (edit = via chat); **Download**; Share/Copy (stub).
@@ -80,7 +80,9 @@ OpenAI-compatible LLM endpoint `https://maas-llm-aiplatform-hcm.api.vngcloud.vn/
 ## 8. Feature status
 **Built:** whole product loop; composer w/ model picker; 5 renderers (dashboards labeled); Configure/Build/Studio; versions + chat-revise; export (docx/xlsx/pptx + HTML); BFF (direct + opencode); **real OpenCode**; **live GreenNode**; resilient fallback; a11y basics + error boundary; egress guard; tests (web ~22 · BFF ~10 · Py 7); security review + fixes.
 **Partial:** bilingual shell; refreshable-report live refresh; Studio inline edit; real sharing; degraded-on-revise surfacing.
-**Deferred/parked:** data layer (FDL/Trino/masking/identity); SSO (stub user "Linh"); server storage/retention; multi-tenant; deploy; upload parsing.
+**Attachments-as-context (built, Phase 1):** attached files are extracted to text in `services/artifacts` (`/attachments`, SQLite store) and injected into generation via a BFF `ContextProvider` (fills the `context` seam). Verified live on GreenNode (a memo used every fact from an uploaded file). Formats: MD/TXT/CSV/DOCX/XLSX/PPTX/PDF; whole-file inject with size caps. **Phase 2 (RAG, `bge-m3` retrieval for large docs)** is designed + gated by an embeddings spike; the same extractor becomes a `parse_file` tool for the autonomous-agent tier. Spec: `docs/superpowers/specs/2026-07-01-attachments-context-design.md`.
+
+**Deferred/parked:** data layer (FDL/Trino/masking/identity); SSO (stub user "Linh"); server storage/retention; multi-tenant; deploy; attachments RAG (Phase 2, gated); attachments on *revise* (v1 = generate only).
 
 ## 9. Run it
 ```bash

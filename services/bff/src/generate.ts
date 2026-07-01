@@ -11,6 +11,7 @@ import {
 } from './types';
 import { runTurn } from './skills/runtime';
 import type { TurnResult } from './skills/types';
+import { contextProvider } from './context/provider';
 
 /** Extract a JSON object from possibly-prose/fenced model output. */
 export function extractJson(raw: string): string {
@@ -76,10 +77,13 @@ async function produceContent(req: BuildRequest, onStage: Stage = () => {}): Pro
   }
   onStage(config.agentRuntime === 'opencode' ? 'Connecting to the agent…' : 'Contacting the model…');
   try {
+    // Best-effort: fetch extracted text for any attachments (docIds) as context.
+    const docIds = (req.uploads ?? []).map((u) => u.docId).filter((d): d is string => !!d);
+    const context = docIds.length ? await contextProvider.getContext(docIds, req.brief) : [];
     onStage(`Composing ${req.type.toLowerCase()}…`);
     const { text, sessionId } = await runModel(
       generateSystem(req.type, req.lang ?? 'en'),
-      generateUser(req),
+      generateUser(req, context),
       req.modelId,
     );
     onStage('Validating & finalizing…');

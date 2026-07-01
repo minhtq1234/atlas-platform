@@ -10,6 +10,9 @@ export const config = {
   // 'opencode' = BFF calls an OpenCode server (the production topology — see agent/).
   agentRuntime: (process.env.AGENT_RUNTIME ?? 'direct') as 'direct' | 'opencode',
 
+  // Artifact service — extracts and serves attachment text as generation context.
+  artifactsUrl: process.env.ARTIFACTS_URL ?? 'http://127.0.0.1:8742',
+
   // GreenNode is OpenAI-compatible. Empty base URL => BFF serves templated
   // artifacts (no model call), so it runs out-of-the-box for the web fallback.
   model: {

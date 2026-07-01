@@ -1,11 +1,14 @@
 """Atlas artifact export service — turns governed artifact content into real Office files."""
 import re
+import time
 from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from pydantic import BaseModel
 
+from .attachments import retrieve_context, store_attachment
 from .docx_builder import build_doc
 from .pptx_builder import build_deck
 from .models import ExportRequest
@@ -74,3 +77,28 @@ def export(req: ExportRequest):
         media_type=MIME[ext],
         headers={"Content-Disposition": _disposition(req.name, ext)},
     )
+
+
+@app.post("/attachments")
+async def attachments(file: UploadFile = File(...)):
+    data = await file.read()
+    try:
+        return store_attachment(
+            data,
+            file.content_type or "application/octet-stream",
+            file.filename or "file",
+            time.time(),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+class RetrieveReq(BaseModel):
+    doc_ids: list[str]
+    query: str = ""
+    k: int = 6
+
+
+@app.post("/attachments/retrieve")
+def attachments_retrieve(req: RetrieveReq):
+    return {"passages": retrieve_context(req.doc_ids, req.query, req.k)}

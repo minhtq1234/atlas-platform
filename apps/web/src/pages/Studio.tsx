@@ -8,8 +8,9 @@ import { useAppStore } from '../store/useAppStore';
 import { reviseArtifact } from '../generation/engine';
 import { exportArtifact } from '../export/exportArtifact';
 import { MODELS } from '../data/templates';
+import type { AgentAction } from '../types';
 
-interface ChatMsg { role: 'assistant' | 'user'; text: string; }
+interface ChatMsg { role: 'assistant' | 'user'; text: string; action?: AgentAction; }
 
 export function Studio() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export function Studio() {
   const library = useAppStore((s) => s.library);
   const addVersion = useAppStore((s) => s.addVersion);
   const setCurrentVersion = useAppStore((s) => s.setCurrentVersion);
+  const setAwaiting = useAppStore((s) => s.setAwaiting);
   const showToast = useAppStore((s) => s.showToast);
 
   const artifact = useMemo(() => library.find((a) => a.id === id), [library, id]);
@@ -53,19 +55,25 @@ export function Studio() {
   const safePage = Math.min(page, total - 1);
   const model = MODELS.find((m) => m.id === artifact.modelId)?.label ?? artifact.modelId;
 
-  const onSend = async () => {
-    const text = draft.trim();
-    if (!text || thinking) return;
-    // Re-read the latest artifact from the store so rapid follow-ups revise the
-    // just-added version, not a stale render closure.
-    const latest = useAppStore.getState().artifactById(id!) ?? artifact;
-    setMessages((m) => [...m, { role: 'user', text }]);
+  const onSend = async (text: string, confirm = false) => {
+    const trimmed = text.trim();
+    if ((!trimmed && !confirm) || thinking) return;
+    // Re-read the latest artifact + plan-confirm state from the store so rapid
+    // follow-ups revise the just-added version, not a stale render closure.
+    const store = useAppStore.getState();
+    const latest = store.artifactById(id!) ?? artifact;
+    const aw = store.awaiting[id!] ?? 'none';
+    const pending = store.pendingPlan[id!];
+    const plan = pending && pending.steps.length ? pending : undefined;
+    // A Confirm click has no user-visible text — don't echo an empty bubble.
+    if (!confirm) setMessages((m) => [...m, { role: 'user', text: trimmed }]);
     setDraft('');
     setThinking(true);
     try {
-      const { version, message } = await reviseArtifact(latest, text);
+      const { action, version, awaiting } = await reviseArtifact(latest, trimmed || 'proceed', { awaiting: aw, plan, confirm });
       if (version) addVersion(latest.id, version); // only when the artifact actually changed
-      setMessages((m) => [...m, { role: 'assistant', text: message }]);
+      setAwaiting(latest.id, awaiting, awaiting === 'plan-confirm' ? action.plan : undefined);
+      setMessages((m) => [...m, { role: 'assistant', text: action.message, action }]);
     } catch {
       setMessages((m) => [...m, { role: 'assistant', text: "I couldn't do that — please try again." }]);
     } finally {
@@ -92,7 +100,28 @@ export function Studio() {
             m.role === 'assistant' ? (
               <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
                 <Orb size={22} />
-                <div style={{ fontSize: 13.5, lineHeight: 1.55, color: color.ink }}>{m.text}</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13.5, lineHeight: 1.55, color: color.ink }}>{m.text}</div>
+                  {/* clarify → quick-reply option chips */}
+                  {m.action?.skill === 'clarify' && m.action.options && m.action.options.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10 }}>
+                      {m.action.options.map((o) => (
+                        <button key={o} type="button" onClick={() => onSend(o)} disabled={thinking} style={chipStyle}>{o}</button>
+                      ))}
+                    </div>
+                  )}
+                  {/* plan → numbered plan card + explicit Confirm */}
+                  {m.action?.skill === 'plan' && m.action.plan && m.action.plan.steps.length > 0 && (
+                    <div style={planCard}>
+                      <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {m.action.plan.steps.map((s, si) => (
+                          <li key={si} style={{ fontSize: 12.5, lineHeight: 1.5, color: color.textSlate }}>{s}</li>
+                        ))}
+                      </ol>
+                      <button type="button" onClick={() => onSend('', true)} disabled={thinking} style={confirmBtn}>Confirm</button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '85%', background: color.indigo100, color: color.indigo, borderRadius: 12, padding: '9px 13px', fontSize: 13.5, lineHeight: 1.5 }}>{m.text}</div>
@@ -111,12 +140,12 @@ export function Studio() {
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); onSend(); } }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); onSend(draft); } }}
               placeholder="Ask follow-up"
               aria-label="Ask a follow-up"
               style={{ flex: 1, border: 'none', outline: 'none', background: 'none', fontFamily: 'inherit', fontSize: 14, color: color.ink, padding: '6px 0' }}
             />
-            <button type="button" aria-label="Send" onClick={onSend} style={{ cursor: 'pointer', border: 'none', background: color.ink, color: '#fff', width: 34, height: 34, borderRadius: 9, fontSize: 15, flex: 'none' }}>↑</button>
+            <button type="button" aria-label="Send" onClick={() => onSend(draft)} style={{ cursor: 'pointer', border: 'none', background: color.ink, color: '#fff', width: 34, height: 34, borderRadius: 9, fontSize: 15, flex: 'none' }}>↑</button>
           </div>
         </div>
       </div>
@@ -218,3 +247,8 @@ export function Studio() {
 const iconBtn = { cursor: 'pointer', border: `1px solid ${color.border}`, background: '#fff', width: 28, height: 28, borderRadius: 7, color: color.textSlate, fontSize: 15, lineHeight: 1 } as const;
 const ghostBtn = { cursor: 'pointer', border: 'none', background: 'none', color: color.textMuted, fontSize: 12.5, fontWeight: 600 } as const;
 const primaryBtn = { cursor: 'pointer', border: 'none', background: color.ink, color: '#fff', padding: '11px 22px', borderRadius: radius.buttonSm, fontSize: 13.5, fontWeight: 600 } as const;
+
+// Agent-skill affordances (clarify chips, plan card + Confirm) — Atlas brand.
+const chipStyle = { cursor: 'pointer', border: `1px solid ${color.indigo200}`, background: color.indigo100, color: color.indigo, borderRadius: radius.pill, padding: '6px 12px', fontSize: 12.5, fontWeight: 600, lineHeight: 1.2 } as const;
+const planCard = { marginTop: 10, border: `1px solid ${color.border}`, background: color.surfaceAlt, borderRadius: radius.menu, padding: '12px 13px', display: 'flex', flexDirection: 'column', gap: 10 } as const;
+const confirmBtn = { alignSelf: 'flex-start', cursor: 'pointer', border: 'none', background: color.indigo, color: '#fff', borderRadius: radius.buttonSm, padding: '8px 16px', fontSize: 12.5, fontWeight: 600 } as const;

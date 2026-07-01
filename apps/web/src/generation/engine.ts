@@ -1,17 +1,18 @@
 // Generation facade. The rest of the app depends ONLY on this interface;
 // the mock implementation swaps for GreenNode-model-backed generation later.
-import type { Artifact, ArtifactVersion, BuildRequest } from '../types';
+import type { AgentTurn, Artifact, ArtifactVersion, BuildRequest } from '../types';
 import { buildContent, reviseContent, uid } from './mockEngine';
 
-/** A revise turn: a new version (or null if the user just asked a question) + the assistant's reply. */
-export interface ReviseResult {
-  version: ArtifactVersion | null;
-  message: string;
+/** Optional plan-confirm state carried into a revise turn (drives the skill runtime). */
+export interface ReviseOpts {
+  awaiting?: 'none' | 'plan-confirm';
+  plan?: { steps: string[] };
+  confirm?: boolean;
 }
 
 export interface GenerationEngine {
   generate(req: BuildRequest, name: string): Promise<Artifact>;
-  revise(artifact: Artifact, instruction: string): Promise<ReviseResult>;
+  revise(artifact: Artifact, message: string, opts?: ReviseOpts): Promise<AgentTurn>;
   /** Optional: stream human-readable stage labels while generating. */
   generateStream?(req: BuildRequest, name: string, onStage: (label: string) => void): Promise<Artifact>;
 }
@@ -36,11 +37,15 @@ export const mockEngine: GenerationEngine = {
       currentVersion: 0,
     };
   },
-  async revise(artifact, instruction) {
-    const current = artifact.versions[artifact.currentVersion];
+  // Offline parity with the BFF skill runtime: always an `edit` turn (no model
+  // to route clarify/plan/answer), so the app works fully without a backend.
+  async revise(artifact, message) {
+    const current = artifact.versions[artifact.currentVersion].content;
+    const content = reviseContent(current, message);
     return {
-      version: { id: uid('v'), createdAt: Date.now(), note: instruction, content: reviseContent(current.content, instruction) },
-      message: `Updated the ${artifact.type.toLowerCase()}.`,
+      action: { skill: 'edit', message: `Updated the ${artifact.type.toLowerCase()}.`, content },
+      version: { id: uid('v'), createdAt: Date.now(), note: message, content },
+      awaiting: 'none',
     };
   },
 };
@@ -54,8 +59,8 @@ export function setEngine(next: GenerationEngine) {
 
 export const generateArtifact = (req: BuildRequest, name: string) =>
   engine.generate(req, name);
-export const reviseArtifact = (artifact: Artifact, instruction: string) =>
-  engine.revise(artifact, instruction);
+export const reviseArtifact = (artifact: Artifact, message: string, opts?: ReviseOpts) =>
+  engine.revise(artifact, message, opts);
 
 /** Streams stage labels if the engine supports it; otherwise a plain generate. */
 export const generateArtifactStream = (

@@ -64,13 +64,15 @@ describe('generateArtifact (mock engine)', () => {
     expect(c.title.toLowerCase()).toContain('attrition');
   });
 
-  it('reviseArtifact returns a new version + a reply', async () => {
+  it('reviseArtifact returns an edit turn with a new version + a reply', async () => {
     const a = await generateArtifact(req('Doc'), 'Memo');
-    const { version, message } = await reviseArtifact(a, 'make it shorter and add Q3 outlook');
-    expect(version).not.toBeNull();
-    expect(version!.content.kind).toBe('Doc');
-    expect(version!.note).toContain('Q3 outlook');
-    expect(version!.id).not.toBe(a.versions[0].id);
-    expect(message).toBeTruthy();
+    const turn = await reviseArtifact(a, 'make it shorter and add Q3 outlook');
+    expect(turn.action.skill).toBe('edit');
+    expect(turn.awaiting).toBe('none');
+    expect(turn.version).not.toBeNull();
+    expect(turn.version!.content.kind).toBe('Doc');
+    expect(turn.version!.note).toContain('Q3 outlook');
+    expect(turn.version!.id).not.toBe(a.versions[0].id);
+    expect(turn.action.message).toBeTruthy();
   });
 });

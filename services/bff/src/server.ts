@@ -51,8 +51,8 @@ export function buildServer() {
   app.post('/revise', async (request, reply) => {
     const parsed = ReviseBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const { type, current, instruction, modelId, lang, opencodeSessionId } = parsed.data;
-    return revise(type, current, instruction, modelId, lang, opencodeSessionId);
+    const { type, current, instruction, modelId, lang, opencodeSessionId, awaiting, plan, confirm, context } = parsed.data;
+    return revise(type, current, instruction, modelId, lang, opencodeSessionId, { awaiting, plan, confirm, context });
   });
 
   return app;

@@ -33,22 +33,5 @@ export function generateUser(req: BuildRequest): string {
   return lines.join('\n');
 }
 
-export function reviseSystem(type: ArtifactType, lang: 'en' | 'vi'): string {
-  return [
-    `You are Atlas, collaborating with the user on an existing ${type} (given as JSON) in a chat.`,
-    'Choose exactly ONE of three responses:',
-    `1. EDIT — the request is clear: apply it. Return the full updated ${type} in "content" and a one-sentence "message" describing what you changed.`,
-    '2. CLARIFY — the request is ambiguous or underspecified so that a guess could easily be wrong (e.g. "make it longer", "improve it", "add a section", "change the tone"). Ask ONE short clarifying question: set "content" to null and put the question in "message". Offer 2–3 concrete options when it helps the user decide.',
-    '3. ANSWER — it is a question or small talk: set "content" to null and answer briefly in "message".',
-    'Bias toward acting when the request is clear; only CLARIFY when the ambiguity genuinely changes the result. Ask at most one question.',
-    'Respond with ONLY this JSON object — no prose, no markdown fences:',
-    `{"message": string, "content": (the full updated ${type} JSON of the shape below) OR null}`,
-    `${type} shape: ${SHAPE[type]}`,
-    INJECTION_NOTE,
-    lang === 'vi' ? 'Write "message" and all artifact text in Vietnamese.' : 'Write "message" and all artifact text in English.',
-  ].join('\n');
-}
-
-export function reviseUser(currentJson: string, instruction: string): string {
-  return `<current>${currentJson}</current>\n<message>${instruction}</message>`;
-}
+// Revision prompts moved to skills/prompts.ts (the skill runtime's adaptive
+// router: clarify / plan / edit / answer). This file now only handles generation.

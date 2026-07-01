@@ -18,10 +18,11 @@ describe('archetype-aware generate', () => {
     expect(sys).toContain('"sections"');
   });
 
-  it('a Deck is unaffected by archetype', () => {
+  it('a Deck gets craft rules but ignores a foreign (Doc) archetype', () => {
     const sys = generateSystem('Deck', 'en', testArch);
     expect(sys).toContain('"kind":"Deck"');
-    expect(sys).not.toContain('Alpha Section');
+    expect(sys).toContain('assertion'); // DECK_RULES injected via moduleFor('Deck').guidance
+    expect(sys).not.toContain('Alpha Section'); // the Doc archetype's sections do NOT leak in
   });
 });
 

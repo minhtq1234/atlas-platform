@@ -1,5 +1,7 @@
 # Structured Documents (BRD-first) Implementation Plan
 
+> Update (2026-07-01): the BRD archetype shipped by this plan was subsequently removed at the user's request — the archetype registry now ships only 'general'; named archetypes (PRD/SOW/...) are team-owned data. The sectioned-Doc model + archetype mechanism are retained.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let Atlas produce real structured business documents (BRD first) — a sectioned `Doc` model with typed blocks, a curated archetype registry with auto-detection, and an editable document-type chip — instead of a flat generic memo.

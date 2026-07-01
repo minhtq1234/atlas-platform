@@ -1,7 +1,6 @@
 export interface WebArchetype { id: string; label: string; aliases: string[] }
 
 export const WEB_ARCHETYPES: WebArchetype[] = [
-  { id: 'brd', label: 'BRD', aliases: ['brd', 'business requirements', 'business requirement'] },
   { id: 'general', label: 'Document', aliases: [] },
 ];
 

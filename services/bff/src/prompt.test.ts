@@ -1,18 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { generateUser, generateSystem } from './prompt';
-import { archetype } from './archetypes';
+import type { Archetype } from './archetypes';
 
 describe('archetype-aware generate', () => {
-  it('injects the BRD skeleton + sectioned shape for a Doc', () => {
-    const sys = generateSystem('Doc', 'en', archetype('brd'));
-    expect(sys).toContain('Functional Requirements');   // skeleton
-    expect(sys).toContain('"sections"');                // sectioned shape offered
-    expect(sys).toMatch(/requirement.*priority/i);      // guidance
+  const testArch: Archetype = {
+    id: 'testdoc',
+    label: 'Test Doc',
+    aliases: [],
+    sections: ['Alpha Section', 'Beta Section'],
+    guidance: 'Use a table for Alpha.',
+  };
+
+  it('injects the synthetic archetype skeleton + sectioned shape for a Doc', () => {
+    const sys = generateSystem('Doc', 'en', testArch);
+    expect(sys).toContain('Alpha Section');
+    expect(sys).toContain('Use a table');
+    expect(sys).toContain('"sections"');
   });
+
   it('a Deck is unaffected by archetype', () => {
-    const sys = generateSystem('Deck', 'en', archetype('brd'));
+    const sys = generateSystem('Deck', 'en', testArch);
     expect(sys).toContain('"kind":"Deck"');
-    expect(sys).not.toContain('Functional Requirements');
+    expect(sys).not.toContain('Alpha Section');
   });
 });
 

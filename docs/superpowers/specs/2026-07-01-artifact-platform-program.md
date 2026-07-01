@@ -40,7 +40,7 @@ export interface ArtifactTypeModule {
   schema: z.ZodObject<any>;                 // the content shape (must be a raw ZodObject — union member)
   shapeHint: string;                        // JSON shape string for generate + revise prompts
   guidance(archetypeId?: string): string;   // type/archetype steering appended to the prompt
-  archetypes: Archetype[];                  // type-specific archetypes (e.g. BRD lives under Doc)
+  archetypes: Archetype[];                  // type-specific archetypes (team-owned data, e.g. a PRD under Doc)
   exemplarKey: string;                      // tag used to store/retrieve this type's exemplars
 }
 ```
@@ -73,7 +73,7 @@ consumed uniformly by all packs. Each is its own sub-spec.
    few-shot injection of gold-standard docs, curated + growable behind an
    `ExemplarProvider` seam; ingested from a gitignored `exemplars/` folder via a
    script that reuses the attachments extractor; stored server-side (sovereignty).
-   Proven on the Doc/BRD reference pack, then reused by every pack.
+   Proven on the Doc reference pack, then reused by every pack.
 2. **Clarify-before-generate** — the generate step asks 2–3 targeted questions to
    gather specifics before building (reuses the skill-runtime clarify pattern).
 3. **Reasoning-first generation** — stop forcing JSON-only for reasoning models;
@@ -89,7 +89,7 @@ consumed uniformly by all packs. Each is its own sub-spec.
   the archetype registry) stable so `generate`/`skills`/`server` don't change.
 - Formalize the web renderer registry and the python export registry.
 - Build the **exemplar toolkit** (capability #1) as a Platform seam.
-- Ship **Doc/BRD as the reference pack** — the worked example every pack copies,
+- Ship **Doc as the reference pack** — the worked example every pack copies,
   validating the contract end-to-end (schema + prompt + archetypes + renderer +
   export + exemplar).
 - Deliver a **pack authoring guide** + a **module template** + contract tests.
@@ -99,7 +99,7 @@ Each clones the reference pack's structure against the frozen contract and goes 
 
 | Pack | Team charter (deepen) |
 |---|---|
-| **WS-1 Doc** | Archetypes: BRD (done), PRD, SOW, policy, exec memo. Sectioned-block depth, requirement tables, exemplars, revise flows. |
+| **WS-1 Doc** | Archetypes: team-defined archetypes (e.g. PRD, SOW, policy, exec memo). Sectioned-block depth, requirement tables, exemplars, revise flows. |
 | **WS-2 Deck** | Slide archetypes: board deck, pitch, QBR. Per-slide layouts, speaker notes, richer slide blocks, exemplars, pptx fidelity. |
 | **WS-3 Sheet** | Archetypes: financial model, headcount plan, schedule. Formulas, multi-block tables, exemplars, xlsx fidelity. |
 | **WS-4 Dashboard** | KPI/chart archetypes, chart-type variety, tile/series layouts, exemplars. |
@@ -107,7 +107,7 @@ Each clones the reference pack's structure against the frozen contract and goes 
 
 ## 6. Sequencing & dependencies
 
-1. **WS-0 first** (contract + module refactor + exemplar toolkit + Doc/BRD reference
+1. **WS-0 first** (contract + module refactor + exemplar toolkit + Doc reference
    pack). Nothing else starts until the contract is frozen and the reference pack
    proves it.
 2. **WS-1…5 fan out in parallel** — independent, contract-bound, disjoint files.
@@ -131,7 +131,7 @@ Each clones the reference pack's structure against the frozen contract and goes 
 
 - **This doc** = the shared map + boundaries for team leads.
 - **Next spec: WS-0 Platform** — folds in the already-scoped exemplar library as its
-  first toolkit capability, does the module refactor, and ships Doc/BRD as the
+  first toolkit capability, does the module refactor, and ships Doc as the
   reference pack. (Its own `spec → plan → implementation`.)
 - Each pack team then writes its own `spec → plan` against the frozen contract,
   using the reference pack + authoring guide.

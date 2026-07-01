@@ -118,7 +118,7 @@ describe('useAppStore', () => {
   });
 
   it('composerRequest carries the archetypeId', () => {
-    useAppStore.getState().setArchetype('brd');
-    expect(useAppStore.getState().composerRequest('a brd').archetypeId).toBe('brd');
+    useAppStore.getState().setArchetype('general');
+    expect(useAppStore.getState().composerRequest('a quick memo').archetypeId).toBe('general');
   });
 });

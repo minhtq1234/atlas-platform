@@ -32,7 +32,7 @@ Folds in and replaces: the former `Plan_Atlas-Web-Phase1.md`, `UX-Spec_Atlas-Hom
 - **Composer** — free-text brief + control row: **output type** (Doc/Deck/Sheet/Dashboard/Report), **data source** (picker → Connect overlay; UI-only for now), **model** (GreenNode picker, 3 models), **📎 attach** (upload; metadata captured, parsing deferred), send.
 - **Configure overlay** — live per-type preview + chat-to-tailor (applied chips, quick chips incl. *In Vietnamese*) + Build. `role=dialog`, Esc-to-close.
 - **Build overlay** — real **SSE-streamed** stage labels + eased progress → routes to Studio; degraded/offline surfaced as a toast.
-- **Studio** — chat-left + canvas-right; chat **regenerates into versions** (context-aware via OpenCode session reuse); version history; pager + filmstrip (decks); zoom; View/Edit toggle (edit = via chat); **Download**; Share/Copy (stub).
+- **Studio** — chat-left + canvas-right. The chat is **intent-aware**: it **edits** (→ new version), **answers questions**, or **asks a clarifying question** when a request is ambiguous (e.g. "make it longer" → offers concrete options instead of guessing). Context-aware via OpenCode session reuse. Version history; pager + filmstrip (decks); zoom; View/Edit toggle (edit = via chat); **Download**; Share/Copy (stub).
 - **Connect data sources** — overlay lists governed sources with connected / connect / **no-access** states + one quiet governance line. **UI-only** (no backend yet).
 - **Library** — localStorage-persisted recent artifacts; survives reload.
 - **States** — empty, building, error, permission-denied, oversized-upload, "no governed data."

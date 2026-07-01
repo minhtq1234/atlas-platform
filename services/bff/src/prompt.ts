@@ -2,7 +2,7 @@ import type { ArtifactType, BuildRequest } from './types';
 
 // Per-type JSON shape hints handed to the model. Keep terse but exact.
 const SHAPE: Record<ArtifactType, string> = {
-  Doc: `{"kind":"Doc","eyebrow":string,"title":string,"meta":string,"paragraphs":string[],"bars":[{"label":string,"value":number 0..1}]?,"callout":{"value":string,"label":string}?}`,
+  Doc: `{"kind":"Doc","eyebrow":string,"title":string,"meta":string,"paragraphs":string[],"bars":[{"label":string,"value":number 0..1}]?,"callout":{"value":string (a SHORT stat like "+37%" or "31 days" — never a sentence),"label":string (short caption)}?}`,
   Deck: `{"kind":"Deck","eyebrow":string,"title":string,"subtitle":string,"slides":[{"title":string,"bullets":string[]?,"isCover":boolean?,"subtitle":string?}] (first slide isCover:true)}`,
   Sheet: `{"kind":"Sheet","title":string,"columns":string[],"rows":(string|number)[][] (each row length == columns length)}`,
   Dashboard: `{"kind":"Dashboard","title":string,"subtitle":string,"tiles":[{"label":string,"value":string,"delta":string?}],"series":{"label":string,"bars":[{"label":string (category, e.g. a month),"value":number 0..1}]}}`,

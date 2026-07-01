@@ -1,5 +1,6 @@
 import { color, shadow } from '../../brand/tokens';
 import type { DeckContent } from '../../types';
+import { renderInline } from '../inline';
 
 export function DeckView({ c, slide = 0 }: { c: DeckContent; slide?: number }) {
   const s = c.slides[Math.min(slide, c.slides.length - 1)];
@@ -36,7 +37,7 @@ export function DeckView({ c, slide = 0 }: { c: DeckContent; slide?: number }) {
       <div style={{ fontSize: 30, fontWeight: 700, marginTop: 6, color: color.ink, letterSpacing: '-0.01em' }}>{s.title}</div>
       <ul style={{ marginTop: 18, paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {(s.bullets ?? []).map((b, i) => (
-          <li key={i} style={{ fontSize: 17, lineHeight: 1.4, color: color.textSlate }}>{b}</li>
+          <li key={i} style={{ fontSize: 17, lineHeight: 1.4, color: color.textSlate }}>{renderInline(b)}</li>
         ))}
       </ul>
     </div>

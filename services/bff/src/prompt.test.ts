@@ -45,3 +45,26 @@ describe('generateUser', () => {
     expect(u).toContain('<files>a.md</files>');
   });
 });
+
+describe('generateUser exemplar block', () => {
+  const req = { brief: 'b', type: 'Doc', modelId: 'm' } as any;
+
+  it('adds a capped <exemplar> reference block when an exemplar is given', () => {
+    const u = generateUser(req, [], 'GOLD BODY TEXT');
+    expect(u).toContain('<exemplar>');
+    expect(u).toContain('GOLD BODY TEXT');
+    expect(u).toContain('do NOT copy'); // reference-not-instructions framing
+  });
+
+  it('caps the exemplar content to 3500 chars', () => {
+    const u = generateUser(req, [], 'x'.repeat(5000));
+    // content sits between the '\n---\n' separator and the closing tag
+    const content = u.slice(u.indexOf('\n---\n') + 5, u.indexOf('\n</exemplar>'));
+    expect(content).toBe('x'.repeat(3500));
+  });
+
+  it('omits the block (identical to before) when no exemplar', () => {
+    expect(generateUser(req, [])).not.toContain('<exemplar>');
+    expect(generateUser(req, [], null)).not.toContain('<exemplar>');
+  });
+});

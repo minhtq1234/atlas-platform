@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { color, shadow } from '../brand/tokens';
 import { LogoMark } from './Orb';
 import { useAppStore } from '../store/useAppStore';
@@ -8,11 +9,16 @@ export function ConnectSourcesOverlay() {
   const closeConnect = useAppStore((s) => s.closeConnect);
   const toggleSourceConnected = useAppStore((s) => s.toggleSourceConnected);
   const showToast = useAppStore((s) => s.showToast);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') useAppStore.getState().closeConnect(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
   if (!open) return null;
 
   return (
     <div onClick={closeConnect} style={{ position: 'fixed', inset: 0, background: 'rgba(26,26,46,0.32)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 35 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 520, maxWidth: '100%', background: '#fff', borderRadius: 18, overflow: 'hidden', boxShadow: shadow.modal, animation: 'risein .2s ease' }}>
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Connect governed sources" style={{ width: 520, maxWidth: '100%', background: '#fff', borderRadius: 18, overflow: 'hidden', boxShadow: shadow.modal, animation: 'risein .2s ease' }}>
         <div style={{ padding: '20px 24px', borderBottom: `1px solid ${color.borderSoft}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: color.textMuted }}>DATA SOURCES</div>

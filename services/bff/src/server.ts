@@ -5,7 +5,7 @@ import { generate, generateStreaming, revise } from './generate';
 import { GenerateBody, ReviseBody } from './types';
 
 export function buildServer() {
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, bodyLimit: 512 * 1024 }); // 512 KB cap
   app.register(cors, { origin: config.webOrigins, methods: ['GET', 'POST'] });
 
   app.get('/health', () => ({
@@ -35,12 +35,15 @@ export function buildServer() {
       Connection: 'keep-alive',
     });
     const send = (event: string, data: unknown) => raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    // Heartbeat so idle-timeout proxies don't kill a long (up to 60s) generation.
+    const heartbeat = setInterval(() => raw.write(': ping\n\n'), 15000);
     try {
       const artifact = await generateStreaming(req, name, (label) => send('stage', { label }));
       send('done', artifact);
     } catch (err) {
       send('error', { message: (err as Error).message });
     } finally {
+      clearInterval(heartbeat);
       raw.end();
     }
   });

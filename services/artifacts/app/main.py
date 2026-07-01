@@ -1,5 +1,6 @@
 """Atlas artifact export service — turns governed artifact content into real Office files."""
 import re
+from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_methods=["POST", "GET"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type"],
 )
 
 MIME = {
@@ -35,6 +36,14 @@ def _filename(name: str, ext: str) -> str:
     return f"{base[:60]}.{ext}"
 
 
+def _disposition(name: str, ext: str) -> str:
+    """Content-Disposition with an ASCII fallback + RFC 5987 UTF-8 name so
+    Vietnamese titles survive. Percent-encoding also neutralizes CRLF/quotes."""
+    ascii_name = _filename(name, ext)
+    utf8 = quote(f"{name[:80]}.{ext}", safe="")
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{utf8}"
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -50,15 +59,18 @@ def export(req: ExportRequest):
             detail=f"{kind} exports as HTML (handled client-side), not an Office file.",
         )
 
-    if kind == "Doc":
-        data = build_doc(req.content, req.name)
-    elif kind == "Sheet":
-        data = build_sheet(req.content, req.name)
-    else:  # Deck
-        data = build_deck(req.content, req.name)
+    try:
+        if kind == "Doc":
+            data = build_doc(req.content, req.name)
+        elif kind == "Sheet":
+            data = build_sheet(req.content, req.name)
+        else:  # Deck
+            data = build_deck(req.content, req.name)
+    except ValueError as e:  # malformed-but-schema-valid input → clean 4xx, not 500
+        raise HTTPException(status_code=422, detail=f"Could not build {kind}: {e}")
 
     return Response(
         content=data,
         media_type=MIME[ext],
-        headers={"Content-Disposition": f'attachment; filename="{_filename(req.name, ext)}"'},
+        headers={"Content-Disposition": _disposition(req.name, ext)},
     )

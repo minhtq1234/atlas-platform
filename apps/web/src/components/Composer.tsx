@@ -7,8 +7,6 @@ import { MODELS, SOURCES, type Template } from '../data/templates';
 import { ARTIFACT_TYPES, type UploadRef } from '../types';
 import { t } from '../i18n/strings';
 
-let uploadSeq = 0;
-
 export function Composer() {
   const fileRef = useRef<HTMLInputElement>(null);
   const s = useAppStore();
@@ -33,7 +31,7 @@ export function Composer() {
         continue;
       }
       const u: UploadRef = {
-        id: `up-${++uploadSeq}-${f.size}`,
+        id: `up-${crypto.randomUUID()}`,
         name: f.name,
         sizeBytes: f.size,
         mime: f.type || 'application/octet-stream',
@@ -71,7 +69,7 @@ export function Composer() {
         value={s.draft}
         onChange={(e) => s.setDraft(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
             e.preventDefault();
             doSend();
           }

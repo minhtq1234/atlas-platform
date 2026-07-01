@@ -4,18 +4,21 @@ import { color } from '../brand/tokens';
 import { Orb } from './Orb';
 import { useAppStore } from '../store/useAppStore';
 import { generateArtifactStream } from '../generation/engine';
+import type { BuildRequest } from '../types';
 
 export function BuildOverlay() {
   const build = useAppStore((s) => s.build);
   const navigate = useNavigate();
-  const running = useRef(false);
+  // Latch on the BuildRequest object identity (fresh per beginBuild). This
+  // survives StrictMode's mount→unmount→remount, so the build runs exactly once.
+  const startedFor = useRef<BuildRequest | null>(null);
 
   useEffect(() => {
-    if (!build?.active || running.current) return;
-    running.current = true;
-
+    if (!build?.active) return;
     const store = useAppStore.getState();
     const req = store.pendingReq;
+    if (!req || startedFor.current === req) return; // already handling this build
+    startedFor.current = req;
     const name = store.build?.name ?? 'Artifact';
 
     // Ease the bar toward 90% while we await real stage events from the BFF.
@@ -27,18 +30,15 @@ export function BuildOverlay() {
     const run = async () => {
       let artifact = null;
       try {
-        if (req) {
-          artifact = await generateArtifactStream(req, name, (label) =>
-            useAppStore.getState().setBuildStage(label),
-          );
-        }
+        artifact = await generateArtifactStream(req, name, (label) =>
+          useAppStore.getState().setBuildStage(label),
+        );
       } catch (e) {
         console.error('[atlas] build failed:', e);
       } finally {
         clearInterval(timer);
       }
       const s = useAppStore.getState();
-      running.current = false;
       if (!artifact) {
         s.endBuild();
         s.showToast("That build didn't complete — try again.");
@@ -54,10 +54,7 @@ export function BuildOverlay() {
     };
     run();
 
-    return () => {
-      clearInterval(timer);
-      running.current = false;
-    };
+    return () => clearInterval(timer); // do NOT reset startedFor (keeps the latch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [build?.active]);
 

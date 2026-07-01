@@ -18,14 +18,14 @@ class DocContent(BaseModel):
     eyebrow: str
     title: str
     meta: str
-    paragraphs: list[str]
-    bars: list[Bar] | None = None
+    paragraphs: list[str] = Field(max_length=200)
+    bars: list[Bar] | None = Field(default=None, max_length=50)
     callout: Callout | None = None
 
 
 class Slide(BaseModel):
     title: str
-    bullets: list[str] | None = None
+    bullets: list[str] | None = Field(default=None, max_length=30)
     isCover: bool | None = None
     subtitle: str | None = None
 
@@ -35,14 +35,15 @@ class DeckContent(BaseModel):
     eyebrow: str
     title: str
     subtitle: str
-    slides: list[Slide]
+    slides: list[Slide] = Field(max_length=100)
 
 
 class SheetContent(BaseModel):
     kind: Literal["Sheet"]
     title: str
-    columns: list[str]
-    rows: list[list[Any]]
+    # min_length=1 rejects a zero-column sheet with a clean 422 (was a 500 crash).
+    columns: list[str] = Field(min_length=1, max_length=50)
+    rows: list[list[Any]] = Field(default_factory=list, max_length=5000)
 
 
 class Tile(BaseModel):
@@ -53,14 +54,14 @@ class Tile(BaseModel):
 
 class Series(BaseModel):
     label: str
-    bars: list[float]
+    bars: list[float] = Field(max_length=1000)
 
 
 class DashboardContent(BaseModel):
     kind: Literal["Dashboard"]
     title: str
     subtitle: str
-    tiles: list[Tile]
+    tiles: list[Tile] = Field(max_length=24)
     series: Series
 
 
@@ -74,8 +75,8 @@ class ReportContent(BaseModel):
     eyebrow: str
     title: str
     asOf: str
-    stats: list[Stat]
-    paragraphs: list[str]
+    stats: list[Stat] = Field(max_length=24)
+    paragraphs: list[str] = Field(max_length=200)
 
 
 ArtifactContent = Union[

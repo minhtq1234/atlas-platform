@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { color, radius, shadow } from '../brand/tokens';
 import { useAppStore } from '../store/useAppStore';
 import { ArtifactCanvas } from '../artifacts/ArtifactCanvas';
@@ -7,6 +8,11 @@ const QUICK_CHIPS = ['Q2 2026', 'TSE only', 'In Vietnamese', 'Minimal style'];
 
 export function ConfigureOverlay() {
   const s = useAppStore();
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') useAppStore.getState().closeConfigure(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
   const cfg = s.configure;
   if (!cfg) return null;
 
@@ -38,7 +44,7 @@ export function ConfigureOverlay() {
 
   return (
     <div onClick={s.closeConfigure} style={overlay}>
-      <div onClick={(e) => e.stopPropagation()} style={modal}>
+      <div onClick={(e) => e.stopPropagation()} style={modal} role="dialog" aria-modal="true" aria-label={`Configure ${cfg.name}`}>
         {/* header */}
         <div style={{ padding: '18px 22px', borderBottom: `1px solid ${color.borderSoft}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flex: 'none' }}>
           <div>
@@ -94,7 +100,7 @@ export function ConfigureOverlay() {
                 <input
                   value={s.configDraft}
                   onChange={(e) => s.setConfigDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); s.addChip(s.configDraft); } }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); s.addChip(s.configDraft); } }}
                   placeholder="e.g. just TSE, in Vietnamese…"
                   aria-label="Tailor the artifact"
                   style={{ flex: 1, border: 'none', outline: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, color: color.ink, padding: '5px 0' }}

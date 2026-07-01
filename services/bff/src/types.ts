@@ -11,14 +11,14 @@ export const DocContent = z.object({
   eyebrow: z.string(),
   title: z.string(),
   meta: z.string(),
-  paragraphs: z.array(z.string()).min(1),
-  bars: z.array(z.object({ label: z.string(), value: z.number() })).optional(),
+  paragraphs: z.array(z.string()).min(1).max(200),
+  bars: z.array(z.object({ label: z.string(), value: z.number() })).max(50).optional(),
   callout: z.object({ value: z.string(), label: z.string() }).optional(),
 });
 
 export const Slide = z.object({
   title: z.string(),
-  bullets: z.array(z.string()).optional(),
+  bullets: z.array(z.string()).max(30).optional(),
   isCover: z.boolean().optional(),
   subtitle: z.string().optional(),
 });
@@ -28,22 +28,22 @@ export const DeckContent = z.object({
   eyebrow: z.string(),
   title: z.string(),
   subtitle: z.string(),
-  slides: z.array(Slide).min(1),
+  slides: z.array(Slide).min(1).max(100),
 });
 
 export const SheetContent = z.object({
   kind: z.literal('Sheet'),
   title: z.string(),
-  columns: z.array(z.string()).min(1),
-  rows: z.array(z.array(z.union([z.string(), z.number()]))),
+  columns: z.array(z.string()).min(1).max(50),
+  rows: z.array(z.array(z.union([z.string(), z.number()])).max(50)).max(5000),
 });
 
 export const DashboardContent = z.object({
   kind: z.literal('Dashboard'),
   title: z.string(),
   subtitle: z.string(),
-  tiles: z.array(z.object({ label: z.string(), value: z.string(), delta: z.string().optional() })),
-  series: z.object({ label: z.string(), bars: z.array(z.number()) }),
+  tiles: z.array(z.object({ label: z.string(), value: z.string(), delta: z.string().optional() })).max(24),
+  series: z.object({ label: z.string(), bars: z.array(z.number()).max(1000) }),
 });
 
 export const ReportContent = z.object({
@@ -51,8 +51,8 @@ export const ReportContent = z.object({
   eyebrow: z.string(),
   title: z.string(),
   asOf: z.string(),
-  stats: z.array(z.object({ value: z.string(), label: z.string() })),
-  paragraphs: z.array(z.string()).min(1),
+  stats: z.array(z.object({ value: z.string(), label: z.string() })).max(24),
+  paragraphs: z.array(z.string()).min(1).max(200),
 });
 
 export const ArtifactContent = z.discriminatedUnion('kind', [
@@ -65,21 +65,21 @@ export const ArtifactContent = z.discriminatedUnion('kind', [
 export type ArtifactContent = z.infer<typeof ArtifactContent>;
 
 export const UploadRef = z.object({
-  id: z.string(),
-  name: z.string(),
+  id: z.string().max(200),
+  name: z.string().max(500),
   sizeBytes: z.number(),
-  mime: z.string(),
-  excerpt: z.string().optional(),
+  mime: z.string().max(200),
+  excerpt: z.string().max(50000).optional(),
 });
 
 export const BuildRequest = z.object({
-  brief: z.string(),
+  brief: z.string().max(8000),
   type: ArtifactType,
-  templateId: z.string().optional(),
-  sourceKey: z.string().optional(),
-  modelId: z.string(),
-  uploads: z.array(UploadRef).optional(),
-  brief_chips: z.array(z.string()).optional(),
+  templateId: z.string().max(200).optional(),
+  sourceKey: z.string().max(200).optional(),
+  modelId: z.string().max(200),
+  uploads: z.array(UploadRef).max(20).optional(),
+  brief_chips: z.array(z.string().max(200)).max(50).optional(),
   lang: z.enum(['en', 'vi']).optional(),
 });
 export type BuildRequest = z.infer<typeof BuildRequest>;
@@ -88,11 +88,11 @@ export const GenerateBody = z.object({ req: BuildRequest, name: z.string() });
 export const ReviseBody = z.object({
   type: ArtifactType,
   current: ArtifactContent,
-  instruction: z.string(),
-  modelId: z.string(),
+  instruction: z.string().max(4000),
+  modelId: z.string().max(200),
   lang: z.enum(['en', 'vi']).optional(),
   /** Continue an existing OpenCode session so edits keep context. */
-  opencodeSessionId: z.string().optional(),
+  opencodeSessionId: z.string().max(200).optional(),
 });
 
 // Artifact shape returned to the web app (matches apps/web Artifact).

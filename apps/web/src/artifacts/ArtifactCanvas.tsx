@@ -5,9 +5,9 @@ import { SheetView } from './renderers/SheetView';
 import { DashboardView } from './renderers/DashboardView';
 import { ReportView } from './renderers/ReportView';
 
-/** How many pages/slides this content has (for the pager + filmstrip). */
+/** How many pages/slides this content has (for the pager + filmstrip). Never < 1. */
 export function pageCount(content: ArtifactContent): number {
-  return content.kind === 'Deck' ? content.slides.length : 1;
+  return content.kind === 'Deck' ? Math.max(1, content.slides.length) : 1;
 }
 
 export function pageLabel(content: ArtifactContent, page: number): string {

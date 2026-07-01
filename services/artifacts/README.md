@@ -26,4 +26,6 @@ pytest -q                                            # 3 builder tests
 - `app/brand.py` — Strata colors/fonts
 - `app/main.py` — FastAPI app + CORS
 
-This service consumes already-composed content; it never queries data directly (architecture invariant). In production it sits behind the BFF inside the sovereign network.
+This service consumes already-composed content; it never queries data directly (architecture invariant).
+
+**Exposure:** today the web app calls `/export` **directly** via the Vite `/api` proxy (dev) — CORS (pinned origins, `Content-Type` only) is the front-line control, and inputs are bounded (column/row/array caps → `422`, not `500`) and formula-injection-safe (string cells starting with `= + - @` are neutralized). In production this should sit **behind the BFF** inside the sovereign network; that routing isn't wired yet.

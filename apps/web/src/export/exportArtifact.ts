@@ -14,12 +14,27 @@ function triggerDownload(blob: Blob, filename: string) {
 }
 
 function safeName(name: string): string {
-  return name.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'artifact';
+  // Keep Unicode (Vietnamese) letters; only strip characters illegal in filenames.
+  return (
+    name
+      .replace(/[/\\:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80) || 'artifact'
+  );
 }
 
 function filenameFromDisposition(header: string | null, fallback: string): string {
   if (!header) return fallback;
-  const m = /filename="?([^"]+)"?/.exec(header);
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header); // RFC 5987 (Unicode) wins
+  if (star) {
+    try {
+      return decodeURIComponent(star[1]);
+    } catch {
+      /* fall through */
+    }
+  }
+  const m = /filename="?([^";]+)"?/.exec(header);
   return m ? m[1] : fallback;
 }
 
@@ -37,7 +52,7 @@ async function exportOffice(name: string, content: ArtifactContent): Promise<voi
   triggerDownload(blob, filenameFromDisposition(res.headers.get('Content-Disposition'), fallback));
 }
 
-const esc = (s: string) =>
+export const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function dashboardHtml(c: DashboardContent, name: string): string {
@@ -97,6 +112,11 @@ export async function exportArtifact(artifact: Artifact): Promise<void> {
     await exportOffice(artifact.name, content);
     return;
   }
-  const html = content.kind === 'Dashboard' ? dashboardHtml(content, artifact.name) : reportHtml(content as ReportContent, artifact.name);
+  const html =
+    content.kind === 'Dashboard'
+      ? dashboardHtml(content, artifact.name)
+      : content.kind === 'Report'
+        ? reportHtml(content, artifact.name)
+        : `<pre>${esc(JSON.stringify(content, null, 2))}</pre>`;
   triggerDownload(new Blob([html], { type: 'text/html' }), `${safeName(artifact.name)}.html`);
 }

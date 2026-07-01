@@ -56,13 +56,21 @@ export function Studio() {
   const onSend = async () => {
     const text = draft.trim();
     if (!text || thinking) return;
+    // Re-read the latest artifact from the store so rapid follow-ups revise the
+    // just-added version, not a stale render closure.
+    const latest = useAppStore.getState().artifactById(id!) ?? artifact;
     setMessages((m) => [...m, { role: 'user', text }]);
     setDraft('');
     setThinking(true);
-    const v = await reviseArtifact(artifact, text);
-    addVersion(artifact.id, v);
-    setMessages((m) => [...m, { role: 'assistant', text: `Done — I updated the ${artifact.type.toLowerCase()} and saved it as a new version.` }]);
-    setThinking(false);
+    try {
+      const v = await reviseArtifact(latest, text);
+      addVersion(latest.id, v);
+      setMessages((m) => [...m, { role: 'assistant', text: `Done — I updated the ${latest.type.toLowerCase()} and saved it as a new version.` }]);
+    } catch {
+      setMessages((m) => [...m, { role: 'assistant', text: "I couldn't apply that change — please try again." }]);
+    } finally {
+      setThinking(false);
+    }
   };
 
   return (
@@ -103,7 +111,7 @@ export function Studio() {
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSend(); } }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); onSend(); } }}
               placeholder="Ask follow-up"
               aria-label="Ask a follow-up"
               style={{ flex: 1, border: 'none', outline: 'none', background: 'none', fontFamily: 'inherit', fontSize: 14, color: color.ink, padding: '6px 0' }}

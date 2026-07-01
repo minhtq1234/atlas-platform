@@ -16,6 +16,15 @@ def _is_number(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
+def _neutralize(v):
+    """Prevent CSV/formula injection: a string cell starting with = + - @ would
+    become a live formula in Excel. Prefix with ' so Excel treats it as text.
+    (Our own trusted =SUM is written separately and is not passed through here.)"""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@"):
+        return "'" + v
+    return v
+
+
 def build_sheet(content: SheetContent, name: str) -> bytes:
     wb = Workbook()
     ws = wb.active
@@ -40,34 +49,38 @@ def build_sheet(content: SheetContent, name: str) -> bytes:
 
     # data rows
     first_data = 3
-    total_row_idx = None
+    row_is_total: dict[int, bool] = {}
     for r, row in enumerate(content.rows, start=first_data):
         is_total = bool(row) and str(row[0]).strip().lower() == "total"
-        if is_total:
-            total_row_idx = r
+        row_is_total[r] = is_total
         for c, val in enumerate(row[:ncols], start=1):
-            cell = ws.cell(row=r, column=c, value=val)
+            cell = ws.cell(row=r, column=c, value=_neutralize(val))
             cell.border = BOX
             cell.font = Font(name=brand.UI_FONT, bold=is_total or c == 1)
             cell.alignment = Alignment(horizontal="left" if c == 1 else "right")
     last_data = first_data + len(content.rows) - 1
 
-    # live SUM formula over the last column's numeric rows (excluding any Total row)
+    # Live SUM over the last numeric column. List the exact non-Total numeric
+    # cells so the formula is correct regardless of where a Total row sits.
     last_numeric_col = None
     for c in range(ncols, 0, -1):
         if any(_is_number(row[c - 1]) for row in content.rows if len(row) >= c):
             last_numeric_col = c
             break
     if last_numeric_col:
-        sum_end = (total_row_idx - 1) if total_row_idx else last_data
         col_letter = get_column_letter(last_numeric_col)
-        frow = last_data + 1
-        lbl = ws.cell(row=frow, column=1, value="Σ formula")
-        lbl.font = Font(name=brand.UI_FONT, italic=True, color=brand.MUTED)
-        fcell = ws.cell(row=frow, column=last_numeric_col,
-                        value=f"=SUM({col_letter}{first_data}:{col_letter}{sum_end})")
-        fcell.font = Font(name=brand.UI_FONT, bold=True, color=brand.INDIGO)
-        fcell.alignment = Alignment(horizontal="right")
+        cells = [
+            f"{col_letter}{r}"
+            for r, row in zip(range(first_data, last_data + 1), content.rows)
+            if not row_is_total[r] and len(row) >= last_numeric_col and _is_number(row[last_numeric_col - 1])
+        ]
+        if cells:
+            frow = last_data + 1
+            lbl = ws.cell(row=frow, column=1, value="Σ formula")
+            lbl.font = Font(name=brand.UI_FONT, italic=True, color=brand.MUTED)
+            fcell = ws.cell(row=frow, column=last_numeric_col, value=f"=SUM({','.join(cells)})")
+            fcell.font = Font(name=brand.UI_FONT, bold=True, color=brand.INDIGO)
+            fcell.alignment = Alignment(horizontal="right")
 
     # column widths + freeze
     ws.column_dimensions["A"].width = 22

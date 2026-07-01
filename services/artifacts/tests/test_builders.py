@@ -1,15 +1,22 @@
 import io
 
 from docx import Document
+from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 from pptx import Presentation
 
 from app.docx_builder import build_doc
+from app.main import app
 from app.models import DeckContent, DocContent, SheetContent
 from app.pptx_builder import build_deck
 from app.xlsx_builder import build_sheet
 
 OOXML_MAGIC = b"PK\x03\x04"
+
+
+def _formula_cells(ws):
+    return [c.value for row in ws.iter_rows() for c in row
+            if isinstance(c.value, str) and c.value.startswith("=")]
 
 
 def test_doc_is_valid_docx_with_title_and_paragraphs():
@@ -65,3 +72,46 @@ def test_deck_is_valid_pptx_with_one_slide_per_input():
     )
     assert "Q2 People Review" in all_text
     assert "1,248 total" in all_text
+
+
+def test_sheet_neutralizes_formula_injection():
+    # A string cell starting with '=' must NOT become a live formula.
+    c = SheetContent(
+        kind="Sheet", title="x", columns=["Item", "Val"],
+        rows=[["=HYPERLINK(\"http://evil\",\"x\")", 5], ["safe", 7]],
+    )
+    wb = load_workbook(io.BytesIO(build_sheet(c, "s")))
+    formulas = _formula_cells(wb.active)
+    # the only formula present is our own trusted SUM
+    assert all(f.startswith("=SUM") for f in formulas), formulas
+
+
+def test_sheet_sum_correct_when_total_row_not_last():
+    # Total in the MIDDLE must not truncate/invert the SUM range.
+    c = SheetContent(
+        kind="Sheet", title="x", columns=["Unit", "N"],
+        rows=[["TSE", 10], ["Total", 99], ["Platform", 20]],
+    )
+    wb = load_workbook(io.BytesIO(build_sheet(c, "s")))
+    sums = [f for f in _formula_cells(wb.active) if f.startswith("=SUM")]
+    assert sums, "expected a SUM"
+    # data rows are 3 (TSE) and 5 (Platform); Total at row 4 excluded
+    assert sums[0] == "=SUM(B3,B5)", sums[0]
+
+
+def test_zero_column_sheet_returns_422_not_500():
+    client = TestClient(app)
+    r = client.post("/export", json={"name": "x", "content": {
+        "kind": "Sheet", "title": "t", "columns": [], "rows": []}})
+    assert r.status_code == 422, r.status_code
+
+
+def test_vietnamese_filename_survives_in_content_disposition():
+    client = TestClient(app)
+    r = client.post("/export", json={"name": "Báo cáo Tài chính", "content": {
+        "kind": "Doc", "eyebrow": "E", "title": "T", "meta": "m", "paragraphs": ["p"]}})
+    assert r.status_code == 200
+    cd = r.headers["content-disposition"]
+    assert "filename*=UTF-8''" in cd
+    from urllib.parse import quote
+    assert quote("Báo cáo Tài chính.docx", safe="") in cd

@@ -3,6 +3,13 @@ import type { DeckContent } from '../../types';
 
 export function DeckView({ c, slide = 0 }: { c: DeckContent; slide?: number }) {
   const s = c.slides[Math.min(slide, c.slides.length - 1)];
+  if (!s) {
+    return (
+      <div style={{ width: 680, maxWidth: '100%', aspectRatio: '16 / 9', borderRadius: 10, boxShadow: shadow.artifact, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color.textMuted, fontSize: 14 }}>
+        This deck has no slides yet.
+      </div>
+    );
+  }
   const frame = {
     width: 680,
     maxWidth: '100%',

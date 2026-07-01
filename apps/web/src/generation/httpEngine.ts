@@ -4,6 +4,9 @@
 import type { Artifact, ArtifactVersion, BuildRequest } from '../types';
 import type { GenerationEngine } from './engine';
 
+/** The BFF was reachable but returned an error (vs. a network/transport failure). */
+export class BffServerError extends Error {}
+
 export function makeHttpEngine(baseUrl: string): GenerationEngine {
   return {
     async generate(req: BuildRequest, name: string): Promise<Artifact> {
@@ -12,7 +15,7 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ req, name }),
       });
-      if (!res.ok) throw new Error(`BFF generate failed (${res.status})`);
+      if (!res.ok) throw new BffServerError(`BFF generate failed (${res.status})`);
       return res.json();
     },
 
@@ -30,7 +33,7 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
           opencodeSessionId: artifact.opencodeSessionId,
         }),
       });
-      if (!res.ok) throw new Error(`BFF revise failed (${res.status})`);
+      if (!res.ok) throw new BffServerError(`BFF revise failed (${res.status})`);
       return res.json();
     },
 
@@ -40,15 +43,15 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ req, name }),
       });
-      if (!res.ok || !res.body) throw new Error(`BFF stream failed (${res.status})`);
+      if (!res.ok || !res.body) throw new BffServerError(`BFF stream failed (${res.status})`);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       let artifact: Artifact | undefined;
 
-      // Parse the SSE stream: blocks separated by a blank line, each with
-      // an `event:` and a `data:` line.
+      // SSE: events separated by a blank line. Within a block, join all `data:`
+      // lines per spec; a leading `event:` line names the event.
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -57,37 +60,46 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
         while ((sep = buffer.indexOf('\n\n')) >= 0) {
           const block = buffer.slice(0, sep);
           buffer = buffer.slice(sep + 2);
-          const event = /event: (.*)/.exec(block)?.[1];
-          const dataLine = /data: (.*)/s.exec(block)?.[1];
-          if (!dataLine) continue;
-          const data = JSON.parse(dataLine);
+          let event = 'message';
+          const dataLines: string[] = [];
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) event = line.slice(6).trim();
+            else if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
+            // lines starting with ':' are comments (heartbeats) — ignore
+          }
+          if (dataLines.length === 0) continue;
+          const data = JSON.parse(dataLines.join('\n'));
           if (event === 'stage') onStage(data.label);
           else if (event === 'done') artifact = data as Artifact;
-          else if (event === 'error') throw new Error(data.message || 'stream error');
+          else if (event === 'error') throw new BffServerError(data.message || 'stream error');
         }
       }
-      if (!artifact) throw new Error('stream ended without an artifact');
+      if (!artifact) throw new BffServerError('stream ended without an artifact');
       return artifact;
     },
   };
 }
 
-/** Try the primary engine; on any failure, fall back to the secondary (and report it). */
+/** Try the primary engine; on failure fall back to the secondary. Reports only
+ *  true transport failures via onFallback (so a server-sent error isn't mislabeled
+ *  "offline"). */
 export function makeResilientEngine(
   primary: GenerationEngine,
   fallback: GenerationEngine,
   onFallback?: (reason: string) => void,
 ): GenerationEngine {
-  const report = (e: unknown) => {
-    console.warn('[atlas] BFF unavailable, using local mock engine:', (e as Error).message);
-    onFallback?.((e as Error).message);
+  const handle = (e: unknown) => {
+    const err = e as Error;
+    // A BffServerError means the BFF was reachable — don't claim "offline".
+    if (!(err instanceof BffServerError)) onFallback?.(err.message);
+    console.warn('[atlas] falling back to local mock engine:', err.message);
   };
   return {
     async generate(req, name) {
       try {
         return await primary.generate(req, name);
       } catch (e) {
-        report(e);
+        handle(e);
         return fallback.generate(req, name);
       }
     },
@@ -95,7 +107,7 @@ export function makeResilientEngine(
       try {
         return await primary.revise(artifact, instruction);
       } catch (e) {
-        report(e);
+        handle(e);
         return fallback.revise(artifact, instruction);
       }
     },
@@ -105,7 +117,7 @@ export function makeResilientEngine(
           ? await primary.generateStream(req, name, onStage)
           : await primary.generate(req, name);
       } catch (e) {
-        report(e);
+        handle(e);
         return fallback.generate(req, name);
       }
     },

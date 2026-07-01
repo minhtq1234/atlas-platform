@@ -1,6 +1,7 @@
 import { buildServer } from './server';
-import { config, modelConfigured } from './config';
+import { config, modelConfigured, validateEgress } from './config';
 
+validateEgress(); // fail fast if an inference target violates the egress policy
 const app = buildServer();
 app
   .listen({ port: config.port, host: '127.0.0.1' })

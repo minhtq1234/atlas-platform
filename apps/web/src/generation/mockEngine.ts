@@ -10,9 +10,7 @@ import type {
   SheetContent,
 } from '../types';
 
-let seq = 0;
-export const uid = (prefix: string) =>
-  `${prefix}-${(++seq).toString(36)}-${Date.now().toString(36)}`;
+export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
 function titleFromBrief(brief: string, fallback: string): string {
   const b = (brief || '').trim();

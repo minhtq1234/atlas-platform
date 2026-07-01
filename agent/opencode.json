@@ -20,7 +20,8 @@
     "fdl": {
       "type": "remote",
       "url": "{env:FDL_MCP_URL}",
-      "enabled": true
+      "//": "Parked until the data layer lands. Flip to true when FDL_MCP_URL is a live endpoint.",
+      "enabled": false
     }
   },
   "agent": {

@@ -33,7 +33,7 @@ describe('BFF /generate + /revise (template path)', () => {
     for (const row of c.rows) expect(row.length).toBe(c.columns.length);
   });
 
-  it('revise returns a new version noting the instruction', async () => {
+  it('revise returns a typed action + version (template path)', async () => {
     const app = buildServer();
     const res = await app.inject({
       method: 'POST',
@@ -47,9 +47,8 @@ describe('BFF /generate + /revise (template path)', () => {
     });
     expect(res.statusCode).toBe(200);
     const r = res.json();
+    expect(r.action.skill).toBeDefined();       // template path → 'edit'
     expect(r.version.content.kind).toBe('Doc');
-    expect(r.version.note).toBe('add a Q3 outlook');
-    expect(r.message).toBeTruthy();
   });
 
   it('rejects an invalid body with 400', async () => {

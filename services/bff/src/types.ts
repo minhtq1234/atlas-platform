@@ -96,6 +96,12 @@ export const ReviseBody = z.object({
   lang: z.enum(['en', 'vi']).optional(),
   /** Continue an existing OpenCode session so edits keep context. */
   opencodeSessionId: z.string().max(200).optional(),
+  /** Adaptive skill-runtime state (plan → confirm → edit). */
+  awaiting: z.enum(['none', 'plan-confirm']).optional(),
+  plan: z.object({ steps: z.array(z.string().max(400)).max(8) }).optional(),
+  confirm: z.boolean().optional(),
+  /** Extracted attachment text — empty in v1 (seam for attachments). */
+  context: z.array(z.string().max(50000)).max(20).optional(),
 });
 
 // Artifact shape returned to the web app (matches apps/web Artifact).

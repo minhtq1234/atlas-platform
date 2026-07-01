@@ -1,15 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { config, generationEnabled } from './config';
 import { runModel } from './modelClient';
-import { generateSystem, generateUser, reviseSystem, reviseUser } from './prompt';
-import { fallbackContent, fallbackRevise } from './templates';
+import { generateSystem, generateUser } from './prompt';
+import { fallbackContent } from './templates';
 import {
   ArtifactContent,
   type Artifact,
   type ArtifactType,
-  type ArtifactVersion,
   type BuildRequest,
 } from './types';
+import { runTurn } from './skills/runtime';
+import type { TurnResult } from './skills/types';
 
 /** Extract a JSON object from possibly-prose/fenced model output. */
 export function extractJson(raw: string): string {
@@ -100,17 +101,10 @@ export async function generateStreaming(req: BuildRequest, name: string, onStage
   return assemble(req, name, await produceContent(req, onStage));
 }
 
-export interface ReviseResult {
-  /** null when the message was a question / no change was made. */
-  version: ArtifactVersion | null;
-  /** the assistant's conversational reply to show in chat. */
-  message: string;
-}
-
-function version(content: ArtifactContent, note: string): ArtifactVersion {
-  return { id: randomUUID(), createdAt: Date.now(), note, content };
-}
-
+/**
+ * A revision turn: routes through the skill runtime, which returns a typed
+ * Action (clarify | plan | edit | answer) plus a version when it edited.
+ */
 export async function revise(
   type: ArtifactType,
   current: ArtifactContent,
@@ -118,23 +112,7 @@ export async function revise(
   modelId: string,
   lang: 'en' | 'vi' = 'en',
   opencodeSessionId?: string,
-): Promise<ReviseResult> {
-  if (!generationEnabled()) {
-    return { version: version(fallbackRevise(current, instruction), instruction), message: 'Applied that as a basic edit (offline template).' };
-  }
-  try {
-    const { text } = await runModel(reviseSystem(type, lang), reviseUser(JSON.stringify(current), instruction), modelId, {
-      sessionId: opencodeSessionId,
-    });
-    const obj = JSON.parse(extractJson(text)) as { message?: unknown; content?: unknown };
-    const message = typeof obj.message === 'string' && obj.message.trim() ? obj.message.trim() : 'Done.';
-    if (obj.content && typeof obj.content === 'object') {
-      const parsed = { ...(obj.content as Record<string, unknown>), kind: type };
-      return { version: version(ArtifactContent.parse(parsed), instruction), message };
-    }
-    return { version: null, message }; // a question / no change
-  } catch (err) {
-    console.warn('[bff] model revise failed, using template:', (err as Error).message);
-    return { version: version(fallbackRevise(current, instruction), instruction), message: 'I applied that as a basic edit.' };
-  }
+  opts: { awaiting?: 'none' | 'plan-confirm'; plan?: { steps: string[] }; confirm?: boolean; context?: string[] } = {},
+): Promise<TurnResult> {
+  return runTurn({ type, current, message: instruction, modelId, lang, sessionId: opencodeSessionId, ...opts });
 }

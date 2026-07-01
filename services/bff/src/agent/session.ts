@@ -1,5 +1,5 @@
 import { createOpencodeClient } from '@opencode-ai/sdk';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { config } from '../config';
 import { toStep } from './steps';
@@ -83,10 +83,15 @@ export function makeOpenCodeSession(handle: SandboxHandle, modelId: string): Age
       };
 
       try {
+        let inputFiles: string[] = [];
+        try { inputFiles = await readdir(join(handle.workdir, 'inputs')); } catch { /* no inputs dir */ }
+        const inputsLine = inputFiles.length
+          ? `Read these input files first (in ${handle.agentDir}/inputs): ${inputFiles.join(', ')}. Derive facts from them.`
+          : `There are NO input files. Build the artifact from the brief alone — do NOT search for or list files.`;
         const preamble = [
           `Your working directory is ${handle.agentDir}.`,
-          `Any input files are in ${handle.agentDir}/inputs — read them to derive facts.`,
-          `Save your FINAL artifact as a single JSON object to ${handle.agentDir}/out/artifact.json using your write tool (create the out/ directory). Do not print the JSON in chat.`,
+          inputsLine,
+          `Then write your FINAL artifact as a single JSON object to ${handle.agentDir}/out/artifact.json using your write tool (create the out/ directory). Do not print the JSON in chat — just write the file.`,
         ].join('\n');
         await ask(`${preamble}\n\n${prompt}`);
 

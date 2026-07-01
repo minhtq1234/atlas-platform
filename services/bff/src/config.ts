@@ -42,7 +42,7 @@ export const config = {
   agent: {
     sandbox: (process.env.SANDBOX ?? 'local') as 'container' | 'local',
     image: process.env.AGENT_IMAGE ?? 'atlas/agent-sandbox:latest',
-    maxSteps: Number(process.env.AGENT_MAX_STEPS ?? 40),
+    maxSteps: Number(process.env.AGENT_MAX_STEPS ?? 60),
     timeoutMs: Number(process.env.AGENT_TIMEOUT_MS ?? 180000),
     workRoot: process.env.AGENT_WORK_ROOT ?? '/tmp/atlas-agent',
   },

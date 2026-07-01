@@ -78,7 +78,12 @@ export function buildServer() {
     const send = (event: string, data: unknown) => raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     const heartbeat = setInterval(() => raw.write(': ping\n\n'), 15000);
     const abort = new AbortController();
-    request.raw.on('close', () => abort.abort()); // client disconnect = Stop
+    let finished = false;
+    // Client disconnect = Stop. Listen on the RESPONSE socket, not request.raw:
+    // on a hijacked SSE stream request.raw's 'close' fires as soon as the POST body
+    // is consumed, which would abort the run instantly. The `finished` guard ignores
+    // the 'close' that our own raw.end() triggers on completion.
+    raw.on('close', () => { if (!finished) abort.abort(); });
     try {
       // Guard here (NOT in runAgent, which is the pure injectable core): with no
       // model/opencode configured, stream a template artifact — keeps this route
@@ -90,6 +95,7 @@ export function buildServer() {
     } catch (err) {
       send('error', { message: (err as Error).message });
     } finally {
+      finished = true;
       clearInterval(heartbeat);
       raw.end();
     }

@@ -1,6 +1,7 @@
 import { color, font, shadow } from '../../brand/tokens';
 import type { DocContent } from '../../types';
 import { renderInline, plainLength } from '../inline';
+import { SectionedDoc } from './SectionedDoc';
 
 export function DocView({ c }: { c: DocContent }) {
   return (
@@ -9,9 +10,13 @@ export function DocView({ c }: { c: DocContent }) {
       <div style={{ fontFamily: font.serif, fontSize: 38, fontWeight: 600, lineHeight: 1.08, color: color.ink }}>{c.title}</div>
       <div style={{ fontSize: 12, color: color.textGhost }}>{c.meta}</div>
       <div style={{ height: 1, background: color.hairline, margin: '6px 0' }} />
-      {c.paragraphs.map((p, i) => (
-        <p key={i} style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65, color: color.textSlate }}>{renderInline(p)}</p>
-      ))}
+      {c.sections && c.sections.length ? (
+        <SectionedDoc sections={c.sections} />
+      ) : (
+        (c.paragraphs ?? []).map((p, i) => (
+          <p key={i} style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65, color: color.textSlate }}>{renderInline(p)}</p>
+        ))
+      )}
       {c.bars && (() => {
         const bars = c.bars!;
         const last = bars.length - 1;

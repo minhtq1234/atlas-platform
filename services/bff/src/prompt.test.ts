@@ -55,10 +55,11 @@ describe('generateUser exemplar block', () => {
     expect(u).toContain('do NOT copy'); // reference-not-instructions framing
   });
 
-  it('caps the exemplar body to 3500 chars', () => {
+  it('caps the exemplar content to 3500 chars', () => {
     const u = generateUser(req, [], 'x'.repeat(5000));
-    const body = u.slice(u.indexOf('<exemplar>'), u.indexOf('</exemplar>'));
-    expect(body.match(/x/g)!.length).toBe(3500);
+    // content sits between the '\n---\n' separator and the closing tag
+    const content = u.slice(u.indexOf('\n---\n') + 5, u.indexOf('\n</exemplar>'));
+    expect(content).toBe('x'.repeat(3500));
   });
 
   it('omits the block (identical to before) when no exemplar', () => {

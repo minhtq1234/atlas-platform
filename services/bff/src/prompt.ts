@@ -5,10 +5,8 @@ import { SHAPE, moduleFor } from './artifacts/registry';
 /** The exact JSON shape hint for a given artifact type (reused by the agent). */
 export const shapeHint = (type: ArtifactType): string => SHAPE[type];
 
-/** Exemplars are injected as a capped reference block (few-shot, not a full doc).
- * The cap is 3499 so the injected body (plus the one 'x' in the opening <exemplar> tag)
- * stays within 3500 characters of exemplar content. */
-const EXEMPLAR_CAP = 3499;
+/** Exemplars are injected as a capped reference block (few-shot, not a full doc). */
+const EXEMPLAR_CAP = 3500;
 
 // Defense-in-depth against prompt injection: user-controlled text is wrapped in
 // tags and the model is told to treat tagged content as data, never instructions.

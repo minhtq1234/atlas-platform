@@ -1,0 +1,21 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "//": "Local verification config: greennode provider → the BFF model stub (services/bff `npm run stub`), no FDL MCP. Copy to a run dir as opencode.json and `opencode serve`.",
+  "provider": {
+    "greennode": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "GreenNode MaaS (local stub)",
+      "options": { "baseURL": "http://127.0.0.1:8788", "apiKey": "stub" },
+      "models": { "llama3-70b": { "name": "GreenNode Llama-3 70B" } }
+    }
+  },
+  "model": "greennode/llama3-70b",
+  "agent": {
+    "hr": {
+      "description": "HR domain artifact agent",
+      "mode": "primary",
+      "prompt": "You are Atlas — HR. When asked to produce an artifact, respond with ONLY a single JSON object matching the requested shape. No prose, no markdown fences.",
+      "tools": { "write": false, "edit": false, "bash": false }
+    }
+  }
+}

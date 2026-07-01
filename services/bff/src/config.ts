@@ -18,7 +18,15 @@ export const config = {
   },
 
   // OpenCode server (when agentRuntime === 'opencode').
-  openCodeUrl: process.env.OPENCODE_URL ?? 'http://localhost:4096',
+  openCode: {
+    url: process.env.OPENCODE_URL ?? 'http://127.0.0.1:4096',
+    providerId: process.env.OPENCODE_PROVIDER ?? 'greennode',
+    agent: process.env.OPENCODE_AGENT ?? 'hr',
+  },
 };
 
 export const modelConfigured = () => config.model.baseUrl.trim().length > 0;
+
+/** Can we call a model at all? Direct needs a base URL; OpenCode manages its own. */
+export const generationEnabled = () =>
+  config.agentRuntime === 'opencode' || modelConfigured();

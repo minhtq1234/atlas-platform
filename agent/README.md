@@ -41,14 +41,33 @@ AGENT_RUNTIME=opencode OPENCODE_URL=http://localhost:4096 npm run dev
 ## Status / what's verified
 
 - ✅ Configuration authored: provider, models, domain agents, MCP wiring.
-- ⛔ **Not executed in this sandbox** — there is no OpenCode binary or live
-  GreenNode endpoint here. Validate `opencode.json` against your installed
-  OpenCode version (config keys can shift between releases).
-- The BFF's `opencode` runtime adapter (`services/bff/src/modelClient.ts`,
-  `openCodeRun`) is a marked seam — implement it against the OpenCode session
-  API once the server is running. The **verified** path today is
-  `AGENT_RUNTIME=direct` (BFF → OpenAI-compatible model), which exercises the
-  same prompt + JSON contract the OpenCode agents use.
+- ✅ **OpenCode runs headless** — `opencode serve` (v1.17.12) boots and exposes
+  its OpenAPI at `/doc`; the custom `greennode` provider loads from `opencode.json`.
+- ✅ **BFF → OpenCode adapter implemented and verified** — `services/bff`
+  (`AGENT_RUNTIME=opencode`) drives the server via `@opencode-ai/sdk`
+  (`session.create` → `session.prompt`), selecting provider/model/agent per
+  request and extracting the assistant's text part. Verified end-to-end:
+  `web → BFF → OpenCode → provider → model → validated artifact`.
+- ⚠️ **Model was a local OpenAI-compatible stub**, standing in for GreenNode
+  (no live MaaS endpoint in this sandbox). Point `GREENNODE_BASE_URL`/`API_KEY`
+  at the real endpoint to go live — no code change.
+- ⛔ **FDL MCP not exercised** (data layer parked). The `mcp.fdl` block is wired
+  but disabled for local runs.
+
+### Verified local run (stub model)
+
+```bash
+# 1. model stub (stands in for GreenNode, OpenAI-compatible + streaming)
+cd services/bff && STUB_PORT=8788 npm run stub
+
+# 2. opencode serve with a config whose greennode provider → the stub
+#    (see the provider block in opencode.json; set options.baseURL to the stub)
+opencode serve --port 4096
+
+# 3. BFF in OpenCode mode
+cd services/bff && AGENT_RUNTIME=opencode OPENCODE_URL=http://127.0.0.1:4096 npm run dev
+# POST /generate now flows BFF → OpenCode → provider → model
+```
 
 ## Files
 

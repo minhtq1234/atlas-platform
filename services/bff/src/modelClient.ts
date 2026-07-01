@@ -1,3 +1,4 @@
+import { createOpencodeClient } from '@opencode-ai/sdk';
 import { config } from './config';
 
 /** Call an OpenAI-compatible Chat Completions endpoint (the GreenNode MaaS contract). */
@@ -33,16 +34,40 @@ async function chatJSON(system: string, user: string, modelId: string): Promise<
   }
 }
 
+/** Map the web's model id (gn-llama3-70b) to an OpenCode provider/model pair. */
+function toOpenCodeModel(modelId: string): { providerID: string; modelID: string } {
+  return { providerID: config.openCode.providerId, modelID: modelId.replace(/^gn-/, '') };
+}
+
 /**
- * Production topology routes through an OpenCode server (configure-don't-fork,
- * invariant #5). Not exercised in this sandbox — the adapter is a clearly-marked
- * seam. See agent/README.md.
+ * Production topology (invariant #5): the BFF drives an OpenCode server, which
+ * runs the domain agent and calls the model. We create a session, send the
+ * combined prompt as a text part, and return the assistant's text.
  */
-async function openCodeRun(_system: string, _user: string, _modelId: string): Promise<string> {
-  throw new Error(
-    `AGENT_RUNTIME=opencode not wired in this build. Run OpenCode (see agent/) and ` +
-      `implement this adapter against ${config.openCodeUrl}, or use AGENT_RUNTIME=direct.`,
-  );
+async function openCodeRun(system: string, user: string, modelId: string): Promise<string> {
+  const client = createOpencodeClient({ baseUrl: config.openCode.url });
+
+  const created = await client.session.create({ body: { title: 'atlas-generate' } });
+  if (created.error || !created.data) throw new Error('OpenCode session.create failed');
+
+  const res = await client.session.prompt({
+    path: { id: created.data.id },
+    body: {
+      model: toOpenCodeModel(modelId),
+      agent: config.openCode.agent,
+      parts: [{ type: 'text', text: `${system}\n\n${user}` }],
+    },
+  });
+  if (res.error || !res.data) throw new Error('OpenCode prompt failed');
+
+  const parts = (res.data.parts ?? []) as { type: string; text?: string }[];
+  const text = parts
+    .filter((p) => p.type === 'text' && p.text)
+    .map((p) => p.text)
+    .join('')
+    .trim();
+  if (!text) throw new Error('OpenCode returned no text part');
+  return text;
 }
 
 /** Returns raw model JSON text, or throws. Caller validates + falls back. */

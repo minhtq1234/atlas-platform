@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { modelConfigured } from './config';
+import { generationEnabled } from './config';
 import { runModel } from './modelClient';
 import { generateSystem, generateUser, reviseSystem, reviseUser } from './prompt';
 import { fallbackContent, fallbackRevise } from './templates';
@@ -13,7 +13,11 @@ import {
 
 /** Parse + validate model JSON into ArtifactContent, forcing the expected kind. */
 function parseContent(raw: string, type: ArtifactType): ArtifactContent {
-  const obj = JSON.parse(raw) as Record<string, unknown>;
+  // Real models may wrap JSON in prose/fences — extract the outermost object.
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  const json = start >= 0 && end > start ? raw.slice(start, end + 1) : raw;
+  const obj = JSON.parse(json) as Record<string, unknown>;
   obj.kind = type; // trust the request's type over the model's self-report
   return ArtifactContent.parse(obj);
 }
@@ -21,7 +25,7 @@ function parseContent(raw: string, type: ArtifactType): ArtifactContent {
 async function produceContent(
   req: BuildRequest,
 ): Promise<{ content: ArtifactContent; viaModel: boolean }> {
-  if (!modelConfigured()) return { content: fallbackContent(req), viaModel: false };
+  if (!generationEnabled()) return { content: fallbackContent(req), viaModel: false };
   try {
     const raw = await runModel(
       generateSystem(req.type, req.lang ?? 'en'),
@@ -60,7 +64,7 @@ export async function revise(
   lang: 'en' | 'vi' = 'en',
 ): Promise<ArtifactVersion> {
   let content: ArtifactContent;
-  if (modelConfigured()) {
+  if (generationEnabled()) {
     try {
       const raw = await runModel(
         reviseSystem(type, lang),

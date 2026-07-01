@@ -9,3 +9,6 @@ dist/
 
 # Per-run agent sandbox workdirs (multi-step agent, local sandbox)
 agent/.runs/
+
+# Sourced exemplar documents (server-side store only — never commit)
+/exemplars/

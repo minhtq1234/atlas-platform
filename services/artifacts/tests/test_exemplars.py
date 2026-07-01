@@ -70,3 +70,29 @@ def test_upload_exemplar_rejects_unsupported_type():
         data={"tag": "api-doc"},
     )
     assert r.status_code == 422
+
+
+from app.ingest_exemplars import ingest_dir, SEEDS_ROOT
+
+
+def test_ingest_dir_stores_files_by_folder_tag(tmp_path):
+    (tmp_path / "ing-doc").mkdir()
+    (tmp_path / "ing-doc" / "gold.md").write_text("# Gold\nGreat structure.")
+    n = ingest_dir(str(tmp_path))
+    assert n == 1
+    ex = retrieve_exemplar(["ing-doc"])
+    assert ex and "Gold" in ex["text"]
+
+
+def test_ingest_skips_unsupported_files(tmp_path):
+    (tmp_path / "ing2").mkdir()
+    (tmp_path / "ing2" / "ok.md").write_text("ok")
+    (tmp_path / "ing2" / "skip.bin").write_bytes(b"\x00\x01")
+    assert ingest_dir(str(tmp_path)) == 1  # .bin skipped
+
+
+def test_committed_doc_seed_is_ingestable():
+    n = ingest_dir(SEEDS_ROOT)
+    assert n >= 1
+    ex = retrieve_exemplar(["doc"])
+    assert ex and ex["text"]

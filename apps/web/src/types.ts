@@ -130,3 +130,27 @@ export interface Artifact {
   degraded?: boolean;
   degradedReason?: string;
 }
+
+// ---- Agent skills (revise turn contract, mirrors the BFF `TurnResult`) ----
+
+/** The capability the agent chose for a single revise turn. */
+export type Skill = 'clarify' | 'plan' | 'edit' | 'answer';
+
+/** One typed agent turn: a chosen skill plus its shaped payload. */
+export interface AgentAction {
+  skill: Skill;
+  message: string;
+  /** clarify: 2–3 quick-reply suggestions the user can click. */
+  options?: string[];
+  /** plan: the proposed steps, awaiting the user's Confirm. */
+  plan?: { steps: string[] };
+  /** edit: the full updated artifact content (also carried on `version`). */
+  content?: ArtifactContent;
+}
+
+/** The BFF `/revise` response: an action, an optional new version, and the next awaiting state. */
+export interface AgentTurn {
+  action: AgentAction;
+  version: ArtifactVersion | null; // set only when skill === 'edit'
+  awaiting: 'none' | 'plan-confirm';
+}

@@ -1,5 +1,6 @@
 import { color, font, shadow } from '../../brand/tokens';
 import type { ReportContent } from '../../types';
+import { renderInline } from '../inline';
 
 export function ReportView({ c }: { c: ReportContent }) {
   return (
@@ -18,7 +19,7 @@ export function ReportView({ c }: { c: ReportContent }) {
           ))}
         </div>
         {c.paragraphs.map((p, i) => (
-          <p key={i} style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: color.textSlate }}>{p}</p>
+          <p key={i} style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: color.textSlate }}>{renderInline(p)}</p>
         ))}
       </div>
     </div>

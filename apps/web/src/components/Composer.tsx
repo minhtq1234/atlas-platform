@@ -23,7 +23,7 @@ export function Composer() {
     s.beginBuild(s.composerRequest(brief), name);
   };
 
-  const onFiles = (files: FileList | null) => {
+  const onFiles = async (files: FileList | null) => {
     if (!files) return;
     for (const f of Array.from(files)) {
       if (f.size > 10 * 1024 * 1024) {
@@ -36,7 +36,21 @@ export function Composer() {
         sizeBytes: f.size,
         mime: f.type || 'application/octet-stream',
       };
+      // Show the chip immediately; enrich it with the parsed docId when ready.
       s.addUpload(u);
+      const form = new FormData();
+      form.append('file', f);
+      try {
+        const res = await fetch('/api/attachments', { method: 'POST', body: form });
+        if (res.ok) {
+          const d = await res.json();
+          s.updateUpload(u.id, { docId: d.doc_id, chars: d.chars, preview: d.preview });
+        } else {
+          s.showToast(`Couldn't read "${f.name}".`);
+        }
+      } catch {
+        s.showToast(`Couldn't read "${f.name}".`);
+      }
     }
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -107,6 +121,7 @@ export function Composer() {
               }}
             >
               📎 {u.name}
+              {u.chars ? ` · ${Math.round(u.chars / 1000)}k chars` : ''}
               <button
                 type="button"
                 aria-label={`Remove ${u.name}`}

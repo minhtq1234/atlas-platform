@@ -74,6 +74,7 @@ interface AppState {
   closeMenus: () => void;
   setTab: (tab: TabKey) => void;
   addUpload: (u: UploadRef) => void;
+  updateUpload: (id: string, patch: Partial<UploadRef>) => void;
   removeUpload: (id: string) => void;
   toggleSourceConnected: (key: string) => void;
   openConnect: () => void;
@@ -156,6 +157,10 @@ export const useAppStore = create<AppState>()(
   setTab: (tab) => set({ tab }),
 
   addUpload: (u) => set((s) => ({ uploads: [...s.uploads, u] })),
+  updateUpload: (id, patch) =>
+    set((s) => ({
+      uploads: s.uploads.map((u) => (u.id === id ? { ...u, ...patch } : u)),
+    })),
   removeUpload: (id) =>
     set((s) => ({ uploads: s.uploads.filter((u) => u.id !== id) })),
 

@@ -12,6 +12,7 @@ const reset = () =>
     chips: [],
     configDraft: '',
     configure: null,
+    uploads: [],
   });
 
 describe('useAppStore', () => {
@@ -59,6 +60,29 @@ describe('useAppStore', () => {
     s.addChip('B');
     s.removeChip(0);
     expect(useAppStore.getState().chips).toEqual(['B']);
+  });
+
+  it('updateUpload patches only the matching upload', () => {
+    const s = useAppStore.getState();
+    s.addUpload({ id: 'a', name: 'a.md', sizeBytes: 10, mime: 'text/markdown' });
+    s.addUpload({ id: 'b', name: 'b.md', sizeBytes: 20, mime: 'text/markdown' });
+    s.updateUpload('a', { docId: 'doc-1', chars: 1234, preview: 'hi' });
+    const ups = useAppStore.getState().uploads;
+    expect(ups.find((u) => u.id === 'a')).toMatchObject({
+      id: 'a',
+      name: 'a.md',
+      docId: 'doc-1',
+      chars: 1234,
+      preview: 'hi',
+    });
+    expect(ups.find((u) => u.id === 'b')?.docId).toBeUndefined();
+  });
+
+  it('updateUpload is a no-op for an unknown id', () => {
+    const s = useAppStore.getState();
+    s.addUpload({ id: 'a', name: 'a.md', sizeBytes: 10, mime: 'text/markdown' });
+    s.updateUpload('missing', { docId: 'doc-x' });
+    expect(useAppStore.getState().uploads.find((u) => u.id === 'a')?.docId).toBeUndefined();
   });
 
   it('openConfigureFromTemplate seeds the configure target', () => {

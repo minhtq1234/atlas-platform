@@ -64,6 +64,7 @@ export interface DocContent {
   meta: string;
   paragraphs: string[];
   bars?: { label: string; value: number }[]; // 0..1 heights
+  barsLayout?: 'vertical' | 'horizontal'; // chart orientation (default vertical)
   callout?: { value: string; label: string };
 }
 

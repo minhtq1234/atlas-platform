@@ -20,6 +20,7 @@ class DocContent(BaseModel):
     meta: str
     paragraphs: list[str] = Field(max_length=200)
     bars: list[Bar] | None = Field(default=None, max_length=50)
+    barsLayout: Literal["vertical", "horizontal"] | None = None
     callout: Callout | None = None
 
 

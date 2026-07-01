@@ -1,7 +1,7 @@
 type z_ArtifactType = 'Doc' | 'Deck' | 'Sheet' | 'Dashboard' | 'Report';
 
 const SHAPE: Record<z_ArtifactType, string> = {
-  Doc: `{"kind":"Doc","eyebrow":string,"title":string,"meta":string,"paragraphs":string[],"bars":[{"label":string,"value":number 0..1}]?,"callout":{"value":string,"label":string}?}`,
+  Doc: `{"kind":"Doc","eyebrow":string,"title":string,"meta":string,"paragraphs":string[],"bars":[{"label":string,"value":number 0..1}]?,"barsLayout":"vertical"|"horizontal"?,"callout":{"value":string,"label":string}?}`,
   Deck: `{"kind":"Deck","eyebrow":string,"title":string,"subtitle":string,"slides":[{"title":string,"bullets":string[]?,"isCover":boolean?,"subtitle":string?}]}`,
   Sheet: `{"kind":"Sheet","title":string,"columns":string[],"rows":(string|number)[][]}`,
   Dashboard: `{"kind":"Dashboard","title":string,"subtitle":string,"tiles":[{"label":string,"value":string,"delta":string?}],"series":{"label":string,"bars":[{"label":string,"value":number 0..1}]}}`,
@@ -24,6 +24,7 @@ export function buildActionPrompt(
     '- "plan": the request is big / multi-step / destructive — return "plan.steps" (2–6) and a one-line "message" proposing them. No "content" yet.',
     '- "answer": a question or small talk — reply in "message". No "content".',
     'Bias toward "edit" when clear; only "clarify" or "plan" when it genuinely changes the result.',
+    'Only make changes the shape can represent. If asked for something outside it (images, custom fonts, chart types beyond the bars + barsLayout shown), apply what the shape allows and briefly note in "message" what is NOT supported — never claim a change in "message" that you did not actually make in "content".',
     'Respond with ONLY this JSON object — no prose, no fences:',
     '{"skill":"edit|clarify|plan|answer","message":string,"options"?:string[],"plan"?:{"steps":string[]},"content"?:<artifact JSON below or omit>}',
     `${type} shape: ${SHAPE[type]}`,

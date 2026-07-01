@@ -19,7 +19,7 @@ parallel. It delivers:
 4. **Doc as the deep reference pack** — the worked example every pack copies.
 5. A **pack authoring guide** + **module template** + **contract tests**.
 
-**Success:** existing behavior unchanged (suites green: BFF 52 · web 34 · Python 14);
+**Success:** existing behavior unchanged (suites green: BFF 51 · web 34 · Python 14);
 `ArtifactContent`, `SHAPE`, `generateSystem`, the archetype registry keep their public
 shape so `generate`/`skills`/`server`/`ArtifactCanvas` don't change; a new type could
 be added by dropping one module folder; a Doc generate injects a Doc exemplar.
@@ -30,9 +30,9 @@ be added by dropping one module folder; a Doc generate injects a Doc exemplar.
 // services/bff/src/artifacts/<type>/index.ts
 export interface ArtifactTypeModule {
   type: ArtifactType;                        // 'Doc'|'Deck'|'Sheet'|'Dashboard'|'Report'
-  schema: z.ZodObject<any>;                  // raw ZodObject (discriminated-union member — NO .refine)
+  schema: z.ZodObject<{ kind: z.ZodLiteral<ArtifactType> } & Record<string, z.ZodTypeAny>>; // raw ZodObject (union member — NO .refine)
   shapeHint: string;                         // JSON shape string for generate + revise prompts
-  guidance(archetypeId?: string): string;    // type/archetype steering appended to the prompt ('' if none)
+  guidance(arch?: Archetype): string;        // steering for the RESOLVED archetype object ('' if none); caller resolves via registry archetype(id)
   archetypes: Archetype[];                   // type-specific archetypes (team-owned data, e.g. a PRD under Doc)
   exemplarKey: string;                       // tag to store/retrieve this type's exemplars (default: type.toLowerCase())
 }
@@ -47,24 +47,36 @@ accepts it) — the "at least one of paragraphs|sections" style rules stay soft
 **BFF — `services/bff/src/artifacts/registry.ts`:**
 ```ts
 export const MODULES: ArtifactTypeModule[] = [doc, deck, sheet, dashboard, report];
-export const ArtifactContent = z.discriminatedUnion('kind', MODULES.map(m => m.schema) as [...]);
+// Union is built from the CONCRETE per-type schemas (full type inference). A
+// `MODULES.map(m => m.schema)` union would collapse z.infer to `{ kind }`-only, since
+// the contract widens `schema` — so the runtime registries use MODULES, but the union
+// imports the concrete schemas. (The registry test asserts every MODULES type parses.)
+export const ArtifactContent = z.discriminatedUnion('kind', [DocContent, DeckContent, SheetContent, DashboardContent, ReportContent]);
 export const SHAPE: Record<ArtifactType,string> = Object.fromEntries(MODULES.map(m => [m.type, m.shapeHint]));
 export const ARCHETYPES = /* flatten MODULES[].archetypes + the shared 'general' */;
 export const moduleFor = (t: ArtifactType) => MODULES.find(m => m.type === t)!;
 ```
 `types.ts` re-exports `ArtifactContent` (+ `ArtifactType`, `Artifact`, `ArtifactVersion`,
 bodies) from the registry so **every existing import keeps working**. `prompt.ts`
-`generateSystem` reads `SHAPE`/`moduleFor(type).guidance(archetypeId)`; `skills/prompts.ts`
+`generateSystem` reads `SHAPE`/`moduleFor(type).guidance(arch)`; `skills/prompts.ts`
 reads the same `SHAPE` (kills today's duplicated SHAPE map); `archetypes.ts` re-exports
 the registry's `ARCHETYPES`/`detectArchetype`/`archetype`.
 
-**Web — `apps/web/src/artifacts/renderers/registry.ts`:** `RENDERERS: Record<kind, Component>`;
-`ArtifactCanvas` looks up `RENDERERS[content.kind]` instead of a switch. Each `<Type>View.tsx`
+**Web — `apps/web/src/artifacts/renderers/registry.tsx`** (as-built)**:** exports
+`renderArtifact(content, page)` — a `kind` switch mapping each type to its `<Type>View`;
+`ArtifactCanvas` delegates to it (keeping `pageCount`/`pageLabel`). Each `<Type>View.tsx`
 stays where it is (already per-type).
 
-**Python — `services/artifacts/app/exports/registry.py`:** `EXPORTERS: dict[type,str→bytes]`;
-`main.py` `/export` dispatches via the registry instead of the `if kind==…` chain. Existing
-`docx_builder`/`xlsx_builder`/`pptx_builder` become `<type>_export.py` (or are wrapped).
+**Python — `services/artifacts/app/exports/registry.py`** (as-built)**:** `EXPORTERS:
+dict[kind → (ext, builder)]` importing the existing `build_doc`/`build_sheet`/`build_deck`
+from `docx_builder`/`xlsx_builder`/`pptx_builder` (kept as-is, not renamed); `main.py`
+`/export` dispatches via the registry instead of the `if kind==…` chain (415/422 unchanged).
+
+**Adding a 6th type** (beyond the v1 five — a non-goal today) touches, besides the module
+folder: the `ArtifactContent` union list + `MODULES` entry (registry), the `ArtifactType`
+enums in `services/bff/src/types.ts` and `apps/web/src/types.ts` (and the `z_ArtifactType`
+alias in `skills/prompts.ts`), the web renderer switch + a `<Type>View`, and `EXPORTERS`
+(if it exports to Office). Small, but more than one line — the enums are the extra bit.
 
 ## 4. Thin migration (all 5 types)
 
@@ -121,8 +133,13 @@ teams clone and the proof that the contract is complete end-to-end.
   `archetypes.ts` keep their exports (re-export shims). `generate.ts`, `skills/*`, `server.ts`,
   `ArtifactCanvas`, renderers, export `/export` behave identically.
 - **Refactor is relocation, not rewrite** — guarded by the full existing suites + new contract tests.
-- **`skills/prompts.ts` SHAPE dedup** — it now reads the registry `SHAPE`; verify the revise tests
-  (`runtime.test.ts`) stay green.
+  One **accepted, intentional exception:** the SHAPE dedup below.
+- **`skills/prompts.ts` SHAPE dedup (accepted behavior change)** — today skills has its own *terser*
+  SHAPE strings that differ from `prompt.ts`'s (they drop hints like `(first slide isCover:true)`,
+  `(each row length == columns length)`). Pointing skills at the registry SHAPE (= the richer
+  `prompt.ts` set) means the **revise** prompt gains those hints — a deliberate, approved improvement,
+  not a pure relocation. Verify the revise tests (`runtime.test.ts`) stay green (they assert behavior,
+  not prompt text).
 - **Python `/export` dispatch** — verify the docx/xlsx/pptx + sectioned-doc tests stay green.
 
 ## 9. Testing
@@ -130,7 +147,7 @@ teams clone and the proof that the contract is complete end-to-end.
 - **BFF:** contract-composition + per-module conformance (`registry.test.ts`); `ArtifactContent`
   still parses all 5 kinds (move/extend existing `types.test.ts`); `generateSystem` injects the
   right module guidance + shape; exemplar `ExemplarProvider` no-op (null) + best-effort; injection
-  adds `<exemplar>` when present. Existing 52 stay green.
+  adds `<exemplar>` when present. Existing 51 stay green.
 - **Web:** renderer registry maps every kind; `ArtifactCanvas` renders each. Existing 34 green.
 - **Python:** `exemplars` store/retrieve (archetype→type→none); `/exemplars` + `/exemplars/retrieve`;
   export registry dispatches each type. Existing 14 green.

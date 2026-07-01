@@ -1,0 +1,27 @@
+import type { z } from 'zod';
+import type { ArtifactType } from '../types';
+
+/** A curated document archetype (team-owned data; the registry ships only `general`). */
+export interface Archetype {
+  id: string;
+  label: string;
+  aliases: string[];
+  sections: string[];
+  guidance: string;
+}
+
+/**
+ * One artifact type as a self-contained module. Pack teams implement this; the
+ * Platform registry composes all modules. `schema` MUST be a raw ZodObject (it is
+ * a discriminated-union member).
+ */
+export interface ArtifactTypeModule {
+  type: ArtifactType;
+  schema: z.ZodObject<{ kind: z.ZodLiteral<ArtifactType> } & Record<string, z.ZodTypeAny>>;
+  shapeHint: string;
+  /** Steering text for a resolved archetype ('' when none applies). The caller resolves
+   *  the archetype (registry `archetype(id)`); the module formats its steering. */
+  guidance(arch?: Archetype): string;
+  archetypes: Archetype[];
+  exemplarKey: string;
+}

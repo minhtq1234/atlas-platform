@@ -3,9 +3,15 @@
 import type { Artifact, ArtifactVersion, BuildRequest } from '../types';
 import { buildContent, reviseContent, uid } from './mockEngine';
 
+/** A revise turn: a new version (or null if the user just asked a question) + the assistant's reply. */
+export interface ReviseResult {
+  version: ArtifactVersion | null;
+  message: string;
+}
+
 export interface GenerationEngine {
   generate(req: BuildRequest, name: string): Promise<Artifact>;
-  revise(artifact: Artifact, instruction: string): Promise<ArtifactVersion>;
+  revise(artifact: Artifact, instruction: string): Promise<ReviseResult>;
   /** Optional: stream human-readable stage labels while generating. */
   generateStream?(req: BuildRequest, name: string, onStage: (label: string) => void): Promise<Artifact>;
 }
@@ -33,10 +39,8 @@ export const mockEngine: GenerationEngine = {
   async revise(artifact, instruction) {
     const current = artifact.versions[artifact.currentVersion];
     return {
-      id: uid('v'),
-      createdAt: Date.now(),
-      note: instruction,
-      content: reviseContent(current.content, instruction),
+      version: { id: uid('v'), createdAt: Date.now(), note: instruction, content: reviseContent(current.content, instruction) },
+      message: `Updated the ${artifact.type.toLowerCase()}.`,
     };
   },
 };

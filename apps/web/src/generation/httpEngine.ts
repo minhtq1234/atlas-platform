@@ -1,8 +1,8 @@
 // HTTP-backed generation engine that calls the BFF (services/bff), which drives
 // OpenCode → the GreenNode model. Wrapped in a resilient engine that falls back
 // to the in-browser mock when the BFF is unreachable, so the app always works.
-import type { Artifact, ArtifactVersion, BuildRequest } from '../types';
-import type { GenerationEngine } from './engine';
+import type { Artifact, BuildRequest } from '../types';
+import type { GenerationEngine, ReviseResult } from './engine';
 
 /** The BFF was reachable but returned an error (vs. a network/transport failure). */
 export class BffServerError extends Error {}
@@ -19,7 +19,7 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
       return res.json();
     },
 
-    async revise(artifact: Artifact, instruction: string): Promise<ArtifactVersion> {
+    async revise(artifact: Artifact, instruction: string): Promise<ReviseResult> {
       const content = artifact.versions[artifact.currentVersion].content;
       const res = await fetch(`${baseUrl}/revise`, {
         method: 'POST',

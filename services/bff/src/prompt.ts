@@ -35,14 +35,18 @@ export function generateUser(req: BuildRequest): string {
 
 export function reviseSystem(type: ArtifactType, lang: 'en' | 'vi'): string {
   return [
-    `You are Atlas. You will be given an existing ${type} as JSON and an instruction.`,
-    'Apply the instruction and respond with ONLY the full updated JSON object of the same shape. No prose.',
-    SHAPE[type],
+    `You are Atlas, working on an existing ${type} (given as JSON) with the user in a chat.`,
+    'Decide what the user wants:',
+    `- If they ask you to CHANGE the ${type}, apply it and return the full updated artifact.`,
+    '- If they ask a QUESTION or make small talk, answer conversationally and do NOT change the artifact.',
+    'Respond with ONLY this JSON object — no prose, no markdown fences:',
+    `{"message": string (one or two short sentences: what you changed, OR your answer to their question), "content": (the full updated ${type} JSON of the shape below) OR null if nothing should change}`,
+    `${type} shape: ${SHAPE[type]}`,
     INJECTION_NOTE,
-    lang === 'vi' ? 'Keep human-readable text in Vietnamese.' : 'Keep human-readable text in English.',
+    lang === 'vi' ? 'Write "message" and all artifact text in Vietnamese.' : 'Write "message" and all artifact text in English.',
   ].join('\n');
 }
 
 export function reviseUser(currentJson: string, instruction: string): string {
-  return `<current>${currentJson}</current>\n<instruction>${instruction}</instruction>`;
+  return `<current>${currentJson}</current>\n<message>${instruction}</message>`;
 }

@@ -63,11 +63,11 @@ export function Studio() {
     setDraft('');
     setThinking(true);
     try {
-      const v = await reviseArtifact(latest, text);
-      addVersion(latest.id, v);
-      setMessages((m) => [...m, { role: 'assistant', text: `Done — I updated the ${latest.type.toLowerCase()} and saved it as a new version.` }]);
+      const { version, message } = await reviseArtifact(latest, text);
+      if (version) addVersion(latest.id, version); // only when the artifact actually changed
+      setMessages((m) => [...m, { role: 'assistant', text: message }]);
     } catch {
-      setMessages((m) => [...m, { role: 'assistant', text: "I couldn't apply that change — please try again." }]);
+      setMessages((m) => [...m, { role: 'assistant', text: "I couldn't do that — please try again." }]);
     } finally {
       setThinking(false);
     }
@@ -185,7 +185,7 @@ export function Studio() {
         </div>
 
         {/* canvas */}
-        <div style={{ flex: 1, overflow: 'auto', background: '#EDEBE4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <div style={{ flex: 1, overflow: 'auto', background: '#EDEBE4', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 32 }}>
           <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}>
             <ArtifactCanvas content={content} page={safePage} />
           </div>

@@ -46,9 +46,10 @@ describe('BFF /generate + /revise (template path)', () => {
       },
     });
     expect(res.statusCode).toBe(200);
-    const v = res.json();
-    expect(v.content.kind).toBe('Doc');
-    expect(v.note).toBe('add a Q3 outlook');
+    const r = res.json();
+    expect(r.version.content.kind).toBe('Doc');
+    expect(r.version.note).toBe('add a Q3 outlook');
+    expect(r.message).toBeTruthy();
   });
 
   it('rejects an invalid body with 400', async () => {

@@ -64,11 +64,13 @@ describe('generateArtifact (mock engine)', () => {
     expect(c.title.toLowerCase()).toContain('attrition');
   });
 
-  it('reviseArtifact adds a version reflecting the instruction', async () => {
+  it('reviseArtifact returns a new version + a reply', async () => {
     const a = await generateArtifact(req('Doc'), 'Memo');
-    const v = await reviseArtifact(a, 'make it shorter and add Q3 outlook');
-    expect(v.content.kind).toBe('Doc');
-    expect(v.note).toContain('Q3 outlook');
-    expect(v.id).not.toBe(a.versions[0].id);
+    const { version, message } = await reviseArtifact(a, 'make it shorter and add Q3 outlook');
+    expect(version).not.toBeNull();
+    expect(version!.content.kind).toBe('Doc');
+    expect(version!.note).toContain('Q3 outlook');
+    expect(version!.id).not.toBe(a.versions[0].id);
+    expect(message).toBeTruthy();
   });
 });

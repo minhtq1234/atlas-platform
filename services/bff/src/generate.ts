@@ -100,6 +100,17 @@ export async function generateStreaming(req: BuildRequest, name: string, onStage
   return assemble(req, name, await produceContent(req, onStage));
 }
 
+export interface ReviseResult {
+  /** null when the message was a question / no change was made. */
+  version: ArtifactVersion | null;
+  /** the assistant's conversational reply to show in chat. */
+  message: string;
+}
+
+function version(content: ArtifactContent, note: string): ArtifactVersion {
+  return { id: randomUUID(), createdAt: Date.now(), note, content };
+}
+
 export async function revise(
   type: ArtifactType,
   current: ArtifactContent,
@@ -107,20 +118,23 @@ export async function revise(
   modelId: string,
   lang: 'en' | 'vi' = 'en',
   opencodeSessionId?: string,
-): Promise<ArtifactVersion> {
-  let content: ArtifactContent;
-  if (generationEnabled()) {
-    try {
-      const { text } = await runModel(reviseSystem(type, lang), reviseUser(JSON.stringify(current), instruction), modelId, {
-        sessionId: opencodeSessionId,
-      });
-      content = parseContent(text, type);
-    } catch (err) {
-      console.warn('[bff] model revise failed, using template:', (err as Error).message);
-      content = fallbackRevise(current, instruction);
-    }
-  } else {
-    content = fallbackRevise(current, instruction);
+): Promise<ReviseResult> {
+  if (!generationEnabled()) {
+    return { version: version(fallbackRevise(current, instruction), instruction), message: 'Applied that as a basic edit (offline template).' };
   }
-  return { id: randomUUID(), createdAt: Date.now(), note: instruction, content };
+  try {
+    const { text } = await runModel(reviseSystem(type, lang), reviseUser(JSON.stringify(current), instruction), modelId, {
+      sessionId: opencodeSessionId,
+    });
+    const obj = JSON.parse(extractJson(text)) as { message?: unknown; content?: unknown };
+    const message = typeof obj.message === 'string' && obj.message.trim() ? obj.message.trim() : 'Done.';
+    if (obj.content && typeof obj.content === 'object') {
+      const parsed = { ...(obj.content as Record<string, unknown>), kind: type };
+      return { version: version(ArtifactContent.parse(parsed), instruction), message };
+    }
+    return { version: null, message }; // a question / no change
+  } catch (err) {
+    console.warn('[bff] model revise failed, using template:', (err as Error).message);
+    return { version: version(fallbackRevise(current, instruction), instruction), message: 'I applied that as a basic edit.' };
+  }
 }

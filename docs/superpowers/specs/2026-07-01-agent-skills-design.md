@@ -66,7 +66,9 @@ New module `services/bff/src/skills/runtime.ts`:
 - `httpEngine.revise` + `GenerationEngine.revise` return type widens from `{version,message}` to the `AgentAction`-shaped result; `mockEngine.revise` returns a simple `edit` action (offline parity).
 
 ## 7. Migration path (later, gated)
-`query_fdl` (governed data) and `critique` become OpenCode **tools/subagents** the agent calls autonomously; the Action contract stays the UI-facing surface (a tool result feeds an eventual `edit`/`answer`). **Gate:** a tool-calling spike (likely Qwen) confirming a GreenNode model drives OpenCode tools reliably before we depend on it. Until then, everything runs through the deterministic runtime.
+`query_fdl` (governed data) and `critique` become OpenCode **tools/subagents** the agent calls autonomously; the Action contract stays the UI-facing surface (a tool result feeds an eventual `edit`/`answer`). **Gate:** a tool-calling spike confirming a GreenNode model drives tools reliably before we depend on it.
+
+> **Spike PASSED (1 Jul 2026).** All three enabled GreenNode models — Qwen 3.5 27B, Gemma 4 31B, MiniMax M2.5 — emit correct OpenAI-style `tool_calls` **and** complete the full call → tool-result → final-answer round-trip. The autonomous **tool-use agent** tier (multi-step loop, task list, "working steps" UI — like coworker.ai) is therefore viable on GreenNode. Recommended build order: (1) `parse_file` tool = the *attachments-as-context* project, (2) multi-step tool loop + streamed working-steps/task-list UI, (3) `query_fdl` once the data layer lands.
 
 ## 8. Testing
 - Unit: each skill schema/parse with fixtures (valid clarify/plan/edit/answer + malformed→fallback); `runtime` state machine (plan→confirm→edit; clarify→reply; answer no-version).

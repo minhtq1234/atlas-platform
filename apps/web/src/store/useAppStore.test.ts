@@ -116,4 +116,9 @@ describe('useAppStore', () => {
     useAppStore.getState().setAgentMode(false);
     expect(useAppStore.getState().agentMode).toBe(false);
   });
+
+  it('composerRequest carries the archetypeId', () => {
+    useAppStore.getState().setArchetype('brd');
+    expect(useAppStore.getState().composerRequest('a brd').archetypeId).toBe('brd');
+  });
 });

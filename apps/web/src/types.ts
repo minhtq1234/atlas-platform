@@ -53,6 +53,7 @@ export interface BuildRequest {
   /** Constraint chips from the configure step, e.g. ["Q2 2026", "In Vietnamese"]. */
   brief_chips?: string[];
   lang?: 'en' | 'vi';
+  archetypeId?: string;
 }
 
 // ---- Artifact content models (what the renderers consume) ----

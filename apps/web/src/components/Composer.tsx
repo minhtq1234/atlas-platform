@@ -7,12 +7,15 @@ import { useAppStore } from '../store/useAppStore';
 import { MODELS, SOURCES, type Template } from '../data/templates';
 import { ARTIFACT_TYPES, type UploadRef, type BuildRequest } from '../types';
 import { t } from '../i18n/strings';
+import { WEB_ARCHETYPES, detectArchetype } from '../data/archetypes';
 
 export function Composer() {
   const fileRef = useRef<HTMLInputElement>(null);
   const s = useAppStore();
   const agentMode = useAppStore((s) => s.agentMode);
   const setAgentMode = useAppStore((s) => s.setAgentMode);
+  const archetypeId = useAppStore((s) => s.archetypeId);
+  const setArchetype = useAppStore((s) => s.setArchetype);
   const selSource = s.sources.find((x) => x.key === s.sourceKey);
   const selModel = MODELS.find((m) => m.id === s.modelId);
   const [agentReq, setAgentReq] = useState<{ req: BuildRequest; name: string } | null>(null);
@@ -90,7 +93,11 @@ export function Composer() {
     >
       <input
         value={s.draft}
-        onChange={(e) => s.setDraft(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          s.setDraft(v);
+          if (s.output === 'Doc') setArchetype(detectArchetype(v));
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
             e.preventDefault();
@@ -238,6 +245,20 @@ export function Composer() {
         >
           ✦ Agent
         </button>
+
+        {/* document type chip — Doc only */}
+        {s.output === 'Doc' && (
+          <select
+            value={archetypeId}
+            onChange={(e) => setArchetype(e.target.value)}
+            aria-label="Document type"
+            style={{ fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${color.border}`, background: '#fff', color: color.textSlate, borderRadius: radius.pill, padding: '6px 10px', fontSize: 12.5, fontWeight: 600 }}
+          >
+            {WEB_ARCHETYPES.map((a) => (
+              <option key={a.id} value={a.id}>{a.id === 'general' ? 'Document' : a.label}</option>
+            ))}
+          </select>
+        )}
 
         {/* upload */}
         <input ref={fileRef} type="file" multiple hidden onChange={(e) => onFiles(e.target.files)} />

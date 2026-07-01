@@ -3,6 +3,8 @@ import { z } from 'zod';
 export const Slide = z.object({
   title: z.string(),
   bullets: z.array(z.string()).max(30).optional(),
+  notes: z.string().optional(),
+  layout: z.enum(['section', 'statement']).optional(),
   isCover: z.boolean().optional(),
   subtitle: z.string().optional(),
 });

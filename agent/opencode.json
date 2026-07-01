@@ -42,6 +42,12 @@
       "mode": "primary",
       "prompt": "{file:./agents/fa.md}",
       "tools": { "fdl*": true, "write": false, "edit": false, "bash": false }
+    },
+    "builder": {
+      "description": "Autonomous multi-step builder — parses inputs, derives facts, emits an artifact.",
+      "mode": "primary",
+      "prompt": "{file:./agents/builder.md}",
+      "tools": { "write": true, "edit": true, "bash": true, "read": true, "emit_artifact": true, "update_task_list": true }
     }
   }
 }

@@ -32,3 +32,41 @@ def test_retrieve_picks_most_recent_for_a_tag():
     store_exemplar("t4-doc", "new", "new body", 2000.0)
     ex = retrieve_exemplar(["t4-doc"])
     assert ex and ex["title"] == "new"
+
+
+from fastapi.testclient import TestClient
+from app.main import app
+
+
+def test_upload_exemplar_and_retrieve_via_api():
+    c = TestClient(app)
+    r = c.post(
+        "/exemplars",
+        files={"file": ("gold.md", b"# Gold\nA clear, well-sectioned brief.", "text/markdown")},
+        data={"tag": "api-doc", "title": "Gold Brief"},
+    )
+    assert r.status_code == 200
+    j = r.json()
+    assert j["tag"] == "api-doc" and j["chars"] > 0
+
+    r2 = c.post("/exemplars/retrieve", json={"tags": ["api-doc"]})
+    assert r2.status_code == 200
+    ex = r2.json()["exemplar"]
+    assert ex and "well-sectioned" in ex["text"]
+
+
+def test_retrieve_api_returns_null_when_no_match():
+    c = TestClient(app)
+    r = c.post("/exemplars/retrieve", json={"tags": ["api-nope"]})
+    assert r.status_code == 200
+    assert r.json()["exemplar"] is None
+
+
+def test_upload_exemplar_rejects_unsupported_type():
+    c = TestClient(app)
+    r = c.post(
+        "/exemplars",
+        files={"file": ("x.bin", b"\x00\x01", "application/octet-stream")},
+        data={"tag": "api-doc"},
+    )
+    assert r.status_code == 422

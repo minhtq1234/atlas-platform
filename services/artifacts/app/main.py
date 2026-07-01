@@ -3,12 +3,13 @@ import re
 import time
 from urllib.parse import quote
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .attachments import retrieve_context, store_attachment
+from .attachments import extract_text, retrieve_context, store_attachment
+from .exemplars import retrieve_exemplar, store_exemplar
 from .exports.registry import EXPORTERS
 from .models import ExportRequest
 
@@ -91,3 +92,30 @@ class RetrieveReq(BaseModel):
 @app.post("/attachments/retrieve")
 def attachments_retrieve(req: RetrieveReq):
     return {"passages": retrieve_context(req.doc_ids, req.query, req.k)}
+
+
+@app.post("/exemplars")
+async def exemplars_upload(
+    file: UploadFile = File(...),
+    tag: str = Form(...),
+    title: str = Form(""),
+):
+    data = await file.read()
+    try:
+        text = extract_text(
+            data,
+            file.content_type or "application/octet-stream",
+            file.filename or "file",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return store_exemplar(tag, title or (file.filename or "exemplar"), text, time.time())
+
+
+class ExemplarRetrieveReq(BaseModel):
+    tags: list[str]
+
+
+@app.post("/exemplars/retrieve")
+def exemplars_retrieve(req: ExemplarRetrieveReq):
+    return {"exemplar": retrieve_exemplar(req.tags)}

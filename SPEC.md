@@ -67,7 +67,7 @@ Ports: web `5173` (dev)/`5174` (preview) · BFF `8787` · artifacts `8742` · Op
 
 **Hardening (done):** SSE heartbeat + client behavior; OpenCode **session reuse** (context-aware revise) + abort/timeout + session cleanup; **egress allowlist** (non-loopback must be https + on `MODEL_ALLOWED_HOSTS` — sovereignty teeth); input bounds + body limit; prompt-injection delimiters; balanced-brace JSON extraction; truncated upstream errors; xlsx **formula-injection** neutralized; RFC-5987 Vietnamese filenames.
 
-**Components:** `apps/web` (React 18 + Zustand), `services/bff` (Fastify + zod), `services/artifacts` (FastAPI + python-docx/openpyxl/python-pptx), `agent/` (OpenCode `opencode.json` + HR/Legal/FA read-only agents — runs headless, verified vs a stub).
+**Components:** `apps/web` (React 18 + Zustand), `services/bff` (Fastify + zod), `services/artifacts` (FastAPI + python-docx/openpyxl/python-pptx), `agent/` (OpenCode `opencode.json` + HR/Legal/FA read-only agents — runs headless; **live-verified against GreenNode**: generate + context-aware session-reuse revise through `BFF→OpenCode→GreenNode`).
 
 ## 6. Artifact model
 Discriminated union `ArtifactContent` (kind = Doc/Deck/Sheet/Dashboard/Report), mirrored in `apps/web/src/types.ts` and `services/bff/src/types.ts` (zod), and in `services/artifacts/app/models.py` (pydantic). Notables: Doc has labeled bars + callout; **Dashboard `series.bars` are `{label,value}[]`** (per-column categories, e.g. months); Sheet keeps a **live `=SUM`** on export. An `Artifact` wraps versions (`opencodeSessionId`, `degraded` metadata).
@@ -75,7 +75,7 @@ Discriminated union `ArtifactContent` (kind = Doc/Deck/Sheet/Dashboard/Report), 
 
 ## 7. GreenNode & models
 OpenAI-compatible LLM endpoint `https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1`; **AIP key** (Bearer) for inference; **IAM service-account** for management. Model = the model's **`path`** (not `code`). Connect/verify: `services/bff/scripts/greennode-connect.sh` + `docs/Connect-GreenNode.md`.
-**Enabled chat models (in the picker):** `google/gemma-4-31b-it` (default, ~2s), `qwen/qwen3-5-27b` (VN, reasoning), `minimax/minimax-m2.5`. **Live-verified** in `direct` mode. Config lives in `services/bff/.env` (gitignored).
+**Enabled chat models (in the picker):** `google/gemma-4-31b-it` (default, ~2s), `qwen/qwen3-5-27b` (VN, reasoning), `minimax/minimax-m2.5`. **Live-verified** in **both `direct` and `opencode`** modes (BFF→OpenCode→GreenNode). Direct config: `services/bff/.env`; OpenCode provider: `agent/opencode.json` (env-driven baseURL/key). `agent/opencode.json` model ids are the real GreenNode `path`s.
 
 ## 8. Feature status
 **Built:** whole product loop; composer w/ model picker; 5 renderers (dashboards labeled); Configure/Build/Studio; versions + chat-revise; export (docx/xlsx/pptx + HTML); BFF (direct + opencode); **real OpenCode**; **live GreenNode**; resilient fallback; a11y basics + error boundary; egress guard; tests (web ~22 · BFF ~10 · Py 7); security review + fixes.

@@ -9,13 +9,13 @@
         "apiKey": "{env:GREENNODE_API_KEY}"
       },
       "models": {
-        "llama3-70b": { "name": "GreenNode Llama-3 70B" },
-        "qwen25-72b": { "name": "GreenNode Qwen2.5 72B" },
-        "mistral-large": { "name": "GreenNode Mistral Large" }
+        "google/gemma-4-31b-it": { "name": "Gemma 4 31B" },
+        "qwen/qwen3-5-27b": { "name": "Qwen 3.5 27B" },
+        "minimax/minimax-m2.5": { "name": "MiniMax M2.5" }
       }
     }
   },
-  "model": "greennode/llama3-70b",
+  "model": "greennode/google/gemma-4-31b-it",
   "mcp": {
     "fdl": {
       "type": "remote",

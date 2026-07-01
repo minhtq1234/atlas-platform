@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { makeTools, formatIssues } from './tools';
 import type { Step, Task } from './types';
 import type { ArtifactContent } from '../types';

@@ -36,6 +36,12 @@ done
 need() { command -v "$1" >/dev/null || { echo "ERROR: '$1' is required" >&2; exit 1; }; }
 need curl; need jq
 
+# Load creds from .greennode.json (cwd) if env vars aren't set — platform convention.
+if { [ -z "${GREENNODE_CLIENT_ID:-}" ] || [ -z "${GREENNODE_CLIENT_SECRET:-}" ]; } && [ -f ".greennode.json" ]; then
+  GREENNODE_CLIENT_ID="${GREENNODE_CLIENT_ID:-$(jq -r '.client_id // empty' .greennode.json)}"
+  GREENNODE_CLIENT_SECRET="${GREENNODE_CLIENT_SECRET:-$(jq -r '.client_secret // empty' .greennode.json)}"
+fi
+
 iam_token() {
   : "${GREENNODE_CLIENT_ID:?set GREENNODE_CLIENT_ID or provide AIP_KEY}"
   : "${GREENNODE_CLIENT_SECRET:?set GREENNODE_CLIENT_SECRET or provide AIP_KEY}"

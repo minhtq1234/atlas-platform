@@ -1,3 +1,4 @@
+import 'dotenv/config'; // load services/bff/.env (gitignored) if present
 import { buildServer } from './server';
 import { config, modelConfigured, validateEgress } from './config';
 

@@ -28,10 +28,13 @@ export const TABS: { key: TabKey; label: string }[] = [
   { key: 'reports', label: 'Reports' },
 ];
 
+// Real GreenNode MaaS model paths (the `model` value the endpoint expects).
+// Only ENABLED chat models are listed. In direct mode the BFF passes the id
+// straight through as the model path (leave MODEL_NAME unset).
 export const MODELS: ModelOption[] = [
-  { id: 'gn-llama3-70b', label: 'GreenNode Llama-3 70B' },
-  { id: 'gn-qwen25-72b', label: 'GreenNode Qwen2.5 72B' },
-  { id: 'gn-mistral-large', label: 'GreenNode Mistral Large' },
+  { id: 'google/gemma-4-31b-it', label: 'Gemma 4 31B (fast)' },
+  { id: 'qwen/qwen3-5-27b', label: 'Qwen 3.5 27B (VN, reasoning)' },
+  { id: 'minimax/minimax-m2.5', label: 'MiniMax M2.5 (reasoning)' },
 ];
 
 export const SOURCES: SourceOption[] = [

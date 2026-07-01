@@ -16,13 +16,13 @@ parallel. It delivers:
 3. The **exemplar toolkit** (first shared-quality capability): server-side store,
    folder ingest reusing the attachments extractor, `ExemplarProvider` seam,
    injection into generation.
-4. **Doc/BRD as the deep reference pack** — the worked example every pack copies.
+4. **Doc as the deep reference pack** — the worked example every pack copies.
 5. A **pack authoring guide** + **module template** + **contract tests**.
 
 **Success:** existing behavior unchanged (suites green: BFF 52 · web 34 · Python 14);
 `ArtifactContent`, `SHAPE`, `generateSystem`, the archetype registry keep their public
 shape so `generate`/`skills`/`server`/`ArtifactCanvas` don't change; a new type could
-be added by dropping one module folder; a BRD generate injects a Doc exemplar.
+be added by dropping one module folder; a Doc generate injects a Doc exemplar.
 
 ## 2. The contract (frozen)
 
@@ -33,7 +33,7 @@ export interface ArtifactTypeModule {
   schema: z.ZodObject<any>;                  // raw ZodObject (discriminated-union member — NO .refine)
   shapeHint: string;                         // JSON shape string for generate + revise prompts
   guidance(archetypeId?: string): string;    // type/archetype steering appended to the prompt ('' if none)
-  archetypes: Archetype[];                   // type-specific archetypes (BRD lives under Doc)
+  archetypes: Archetype[];                   // type-specific archetypes (team-owned data, e.g. a PRD under Doc)
   exemplarKey: string;                       // tag to store/retrieve this type's exemplars (default: type.toLowerCase())
 }
 ```
@@ -72,7 +72,8 @@ Mechanical relocation, no behavior change:
 - BFF: for each type, create `artifacts/<type>/{schema.ts, prompt.ts, archetypes.ts, index.ts}`
   by moving that type's existing zod object, its `SHAPE[type]` string, its guidance, and its
   archetypes out of the monolithic files. `index.ts` exports the `ArtifactTypeModule`.
-- Doc carries the sectioned schema + BRD archetype (already built). Deck/Sheet/Dashboard/Report
+- Doc carries the sectioned schema + a `'general'` archetype (already built); named archetypes
+  are team-owned data. Deck/Sheet/Dashboard/Report
   get thin modules (current schema + shapeHint, empty `archetypes`, `guidance` = '').
 - The monolithic `types.ts`/`prompt.ts`/`archetypes.ts` shrink to re-export shims (API-stable).
 
@@ -96,11 +97,12 @@ Per the exemplar design (2026-07-01), built as a Platform seam:
   out-of-the-box; the org's real sourced docs go in the gitignored folder → server-side store →
   never committed.
 
-## 6. Doc/BRD reference pack (deep)
+## 6. Doc reference pack (deep)
 
 Doc's module is the canonical, fully-realized example: sectioned schema + typed blocks (built),
-BRD + general archetypes (built), `<DocView>` sectioned renderer (built), docx sectioned export
-(built), plus **Doc exemplars** (a gold BRD + a gold general doc, seeded). It is the template pack
+the sectioned Doc + a `'general'` archetype (built; named archetypes are team-owned data),
+`<DocView>` sectioned renderer (built), docx sectioned export
+(built), plus **Doc exemplars** (a gold general doc, seeded). It is the template pack
 teams clone and the proof that the contract is complete end-to-end.
 
 ## 7. Authoring guide + template + contract tests
@@ -142,7 +144,7 @@ teams clone and the proof that the contract is complete end-to-end.
 3. Python: export registry + `/export` dispatch.
 4. Exemplar store + ingest script + `/exemplars`(+retrieve) endpoints (+ py tests).
 5. `ExemplarProvider` seam + injection into `generateUser`/`produceContent` (+ bff tests).
-6. Doc exemplars + committed safe seeds; live BRD generate shows exemplar-anchored output.
+6. Doc exemplars + committed safe seeds; a live Doc generate shows exemplar-anchored output.
 7. Authoring guide + module template.
 8. Full-suite verify + update SPEC + program doc "WS-0 done".
 

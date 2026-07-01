@@ -7,18 +7,6 @@ export interface Archetype {
 }
 
 export const ARCHETYPES: Record<string, Archetype> = {
-  brd: {
-    id: 'brd',
-    label: 'BRD',
-    aliases: ['brd', 'business requirements', 'business requirement'],
-    sections: [
-      'Purpose & Background', 'Scope', 'Stakeholders', 'Functional Requirements',
-      'Non-Functional Requirements', 'Assumptions & Dependencies', 'Risks', 'Acceptance Criteria',
-    ],
-    guidance:
-      'Use a table with columns ID, Requirement, Priority for Functional Requirements. ' +
-      'Ground every figure in the brief/inputs — never invent metrics or charts.',
-  },
   general: {
     id: 'general',
     label: 'Document',

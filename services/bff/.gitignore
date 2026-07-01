@@ -1,3 +1,5 @@
 node_modules/
 dist/
 .env
+.greennode.json
+.greennode_token_cache

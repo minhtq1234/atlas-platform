@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { color } from '../brand/tokens';
 import { Orb } from './Orb';
 import { useAppStore } from '../store/useAppStore';
-import { generateArtifact } from '../generation/engine';
+import { generateArtifactStream } from '../generation/engine';
 
 export function BuildOverlay() {
   const build = useAppStore((s) => s.build);
@@ -14,34 +14,45 @@ export function BuildOverlay() {
     if (!build?.active || running.current) return;
     running.current = true;
 
+    const store = useAppStore.getState();
+    const req = store.pendingReq;
+    const name = store.build?.name ?? 'Artifact';
+
+    // Ease the bar toward 90% while we await real stage events from the BFF.
     const timer = setInterval(() => {
       const s = useAppStore.getState();
-      const cur = s.build?.pct ?? 0;
-      const next = Math.min(cur + 4, 100);
-      s.setBuildPct(next);
-      if (next >= 100) {
-        clearInterval(timer);
-        const req = s.pendingReq;
-        const name = s.build?.name ?? 'Artifact';
+      if (s.build) s.setBuildPct(Math.min(s.build.pct + 3, 90));
+    }, 130);
+
+    const run = async () => {
+      let artifact = null;
+      try {
         if (req) {
-          generateArtifact(req, name)
-            .then((art) => {
-              s.addArtifact(art);
-              s.endBuild();
-              running.current = false;
-              navigate(`/studio/${art.id}`);
-            })
-            .catch(() => {
-              s.endBuild();
-              running.current = false;
-              s.showToast("That build didn't complete — try again.");
-            });
-        } else {
-          s.endBuild();
-          running.current = false;
+          artifact = await generateArtifactStream(req, name, (label) =>
+            useAppStore.getState().setBuildStage(label),
+          );
         }
+      } catch (e) {
+        console.error('[atlas] build failed:', e);
+      } finally {
+        clearInterval(timer);
       }
-    }, 90);
+      const s = useAppStore.getState();
+      running.current = false;
+      if (!artifact) {
+        s.endBuild();
+        s.showToast("That build didn't complete — try again.");
+        return;
+      }
+      s.setBuildPct(100);
+      s.addArtifact(artifact);
+      s.endBuild();
+      if (artifact.degraded) {
+        s.showToast('Model was unavailable — Atlas used a template for this build.');
+      }
+      navigate(`/studio/${artifact.id}`);
+    };
+    run();
 
     return () => {
       clearInterval(timer);
@@ -61,7 +72,7 @@ export function BuildOverlay() {
           <div style={{ fontSize: 13, color: color.textMuted }}>{build.stage}</div>
         </div>
         <div style={{ width: '100%', height: 7, borderRadius: 5, background: color.trackBg, overflow: 'hidden' }}>
-          <div style={{ height: '100%', borderRadius: 5, background: color.indigo, transition: 'width .12s linear', width: `${build.pct}%` }} />
+          <div style={{ height: '100%', borderRadius: 5, background: color.indigo, transition: 'width .18s linear', width: `${build.pct}%` }} />
         </div>
       </div>
     </div>

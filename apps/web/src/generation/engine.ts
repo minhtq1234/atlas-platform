@@ -6,6 +6,8 @@ import { buildContent, reviseContent, uid } from './mockEngine';
 export interface GenerationEngine {
   generate(req: BuildRequest, name: string): Promise<Artifact>;
   revise(artifact: Artifact, instruction: string): Promise<ArtifactVersion>;
+  /** Optional: stream human-readable stage labels while generating. */
+  generateStream?(req: BuildRequest, name: string, onStage: (label: string) => void): Promise<Artifact>;
 }
 
 export const mockEngine: GenerationEngine = {
@@ -50,3 +52,11 @@ export const generateArtifact = (req: BuildRequest, name: string) =>
   engine.generate(req, name);
 export const reviseArtifact = (artifact: Artifact, instruction: string) =>
   engine.revise(artifact, instruction);
+
+/** Streams stage labels if the engine supports it; otherwise a plain generate. */
+export const generateArtifactStream = (
+  req: BuildRequest,
+  name: string,
+  onStage: (label: string) => void,
+): Promise<Artifact> =>
+  engine.generateStream ? engine.generateStream(req, name, onStage) : engine.generate(req, name);

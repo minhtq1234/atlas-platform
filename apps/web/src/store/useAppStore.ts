@@ -89,6 +89,7 @@ interface AppState {
   /** Compose a BuildRequest from current composer state + a brief. */
   composerRequest: (brief: string) => BuildRequest;
   setBuildPct: (pct: number) => void;
+  setBuildStage: (label: string) => void;
   endBuild: () => void;
 
   // library
@@ -222,17 +223,8 @@ export const useAppStore = create<AppState>()(
           : 'Reading the brief…',
       },
     }),
-  setBuildPct: (pct) =>
-    set((s) => {
-      if (!s.build) return {};
-      const stages = [
-        s.build.stage.startsWith('Reading') ? s.build.stage : 'Reading the brief…',
-        `Composing ${s.pendingReq?.type?.toLowerCase() ?? 'artifact'}…`,
-        'Polishing the layout…',
-        'Almost there…',
-      ];
-      return { build: { ...s.build, pct, stage: stages[Math.min(stages.length - 1, Math.floor(pct / 26))] } };
-    }),
+  setBuildPct: (pct) => set((s) => (s.build ? { build: { ...s.build, pct } } : {})),
+  setBuildStage: (label) => set((s) => (s.build ? { build: { ...s.build, stage: label } } : {})),
   endBuild: () => set({ build: null, pendingReq: null }),
 
   addArtifact: (a) => set((s) => ({ library: [a, ...s.library] })),

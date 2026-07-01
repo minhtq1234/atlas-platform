@@ -123,4 +123,9 @@ export interface Artifact {
   createdAt: number;
   versions: ArtifactVersion[];
   currentVersion: number; // index into versions
+  /** OpenCode session backing this artifact (set by the BFF; enables context-aware revisions). */
+  opencodeSessionId?: string;
+  /** True when the BFF fell back to a template because the model errored. */
+  degraded?: boolean;
+  degradedReason?: string;
 }

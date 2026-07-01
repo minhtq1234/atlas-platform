@@ -91,6 +91,8 @@ export const ReviseBody = z.object({
   instruction: z.string(),
   modelId: z.string(),
   lang: z.enum(['en', 'vi']).optional(),
+  /** Continue an existing OpenCode session so edits keep context. */
+  opencodeSessionId: z.string().optional(),
 });
 
 // Artifact shape returned to the web app (matches apps/web Artifact).
@@ -109,4 +111,9 @@ export interface Artifact {
   createdAt: number;
   versions: ArtifactVersion[];
   currentVersion: number;
+  /** OpenCode session backing this artifact (for context-aware revisions). */
+  opencodeSessionId?: string;
+  /** True when generation fell back to a template because the model errored. */
+  degraded?: boolean;
+  degradedReason?: string;
 }

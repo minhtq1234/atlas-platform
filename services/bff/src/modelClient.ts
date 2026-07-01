@@ -39,19 +39,52 @@ function toOpenCodeModel(modelId: string): { providerID: string; modelID: string
   return { providerID: config.openCode.providerId, modelID: modelId.replace(/^gn-/, '') };
 }
 
+export interface ModelResult {
+  text: string;
+  /** OpenCode session used (undefined in direct mode). */
+  sessionId?: string;
+}
+
+/** Reject if `p` doesn't settle within `ms` (OpenCode blocks when its provider is down). */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
+// Reuse one SDK client across requests (avoids per-call setup).
+let _client: ReturnType<typeof createOpencodeClient> | undefined;
+function getClient() {
+  if (!_client) _client = createOpencodeClient({ baseUrl: config.openCode.url });
+  return _client;
+}
+
 /**
  * Production topology (invariant #5): the BFF drives an OpenCode server, which
- * runs the domain agent and calls the model. We create a session, send the
- * combined prompt as a text part, and return the assistant's text.
+ * runs the domain agent and calls the model. Reuses `existingSessionId` when
+ * given so revisions continue the same conversation.
  */
-async function openCodeRun(system: string, user: string, modelId: string): Promise<string> {
-  const client = createOpencodeClient({ baseUrl: config.openCode.url });
+async function openCodeRun(
+  system: string,
+  user: string,
+  modelId: string,
+  existingSessionId?: string,
+): Promise<ModelResult> {
+  const client = getClient();
 
-  const created = await client.session.create({ body: { title: 'atlas-generate' } });
-  if (created.error || !created.data) throw new Error('OpenCode session.create failed');
+  let sessionId = existingSessionId;
+  if (!sessionId) {
+    const created = await client.session.create({ body: { title: 'atlas-generate' } });
+    if (created.error || !created.data) throw new Error('OpenCode session.create failed');
+    sessionId = created.data.id;
+  }
 
   const res = await client.session.prompt({
-    path: { id: created.data.id },
+    path: { id: sessionId },
     body: {
       model: toOpenCodeModel(modelId),
       agent: config.openCode.agent,
@@ -67,12 +100,17 @@ async function openCodeRun(system: string, user: string, modelId: string): Promi
     .join('')
     .trim();
   if (!text) throw new Error('OpenCode returned no text part');
-  return text;
+  return { text, sessionId };
 }
 
-/** Returns raw model JSON text, or throws. Caller validates + falls back. */
-export function runModel(system: string, user: string, modelId: string): Promise<string> {
+/** Returns raw model JSON text (+ session in OpenCode mode), or throws. */
+export async function runModel(
+  system: string,
+  user: string,
+  modelId: string,
+  opts: { sessionId?: string } = {},
+): Promise<ModelResult> {
   return config.agentRuntime === 'opencode'
-    ? openCodeRun(system, user, modelId)
-    : chatJSON(system, user, modelId);
+    ? withTimeout(openCodeRun(system, user, modelId, opts.sessionId), config.openCode.timeoutMs, 'OpenCode')
+    : { text: await chatJSON(system, user, modelId) };
 }

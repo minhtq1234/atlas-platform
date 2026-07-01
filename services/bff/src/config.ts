@@ -22,6 +22,8 @@ export const config = {
     url: process.env.OPENCODE_URL ?? 'http://127.0.0.1:4096',
     providerId: process.env.OPENCODE_PROVIDER ?? 'greennode',
     agent: process.env.OPENCODE_AGENT ?? 'hr',
+    // Bound the OpenCode call — it blocks/retries when its provider is down.
+    timeoutMs: Number(process.env.OPENCODE_TIMEOUT_MS ?? 60000),
   },
 };
 

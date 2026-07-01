@@ -13,8 +13,10 @@ describe('friendlyToolName', () => {
   it('detects python by command/file', () => {
     expect(friendlyToolName('bash', { command: 'python3 parse.py' })).toBe('Running Python');
   });
-  it('falls back to the raw name', () => {
-    expect(friendlyToolName('grep')).toBe('grep');
+  it('returns null for unrecognized/internal tools (filtered from the feed)', () => {
+    expect(friendlyToolName('grep')).toBeNull();
+    expect(friendlyToolName('task')).toBeNull();
+    expect(friendlyToolName('invalid')).toBeNull();
   });
 });
 
@@ -33,5 +35,10 @@ describe('toStep', () => {
   });
   it('ignores events with no tool name', () => {
     expect(toStep({ type: 'message', text: 'hi' })).toBeNull();
+  });
+  it('drops internal/unknown tools so they never become chips', () => {
+    expect(toStep({ type: 'tool', name: 'task', state: 'start' })).toBeNull();
+    expect(toStep({ type: 'tool', name: 'invalid', state: 'error', output: 'x' })).toBeNull();
+    expect(toStep({ type: 'tool', name: 'glob', state: 'completed', output: 'y' })).toBeNull();
   });
 });

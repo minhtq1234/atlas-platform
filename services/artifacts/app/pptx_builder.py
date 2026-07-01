@@ -58,6 +58,19 @@ def _content(slide, deck: DeckContent, s: Slide):
         _bullets(slide, 1.0, 2.6, 11, 4.0, s.bullets, color=brand.INK)
 
 
+def _section(slide, deck: DeckContent, s: Slide):
+    _bg(slide, brand.INDIGO)
+    _text(slide, 0.9, 0.7, 11, 0.4, deck.eyebrow.upper(), size=12, color=brand.CORAL, bold=True)
+    _text(slide, 0.9, 3.0, 11.5, 1.6, s.title, size=40, color=brand.WHITE, bold=True, font=brand.SERIF_FONT)
+
+
+def _statement(slide, deck: DeckContent, s: Slide):
+    _bg(slide, brand.WHITE)
+    _text(slide, 0.9, 2.8, 11.5, 2.0, s.title, size=34, color=brand.INK, bold=True, font=brand.SERIF_FONT)
+    if s.subtitle:
+        _text(slide, 0.9, 4.7, 11.5, 0.8, s.subtitle, size=16, color=brand.INDIGO)
+
+
 def build_deck(content: DeckContent, name: str) -> bytes:
     prs = Presentation()
     prs.slide_width = Inches(13.333)
@@ -69,8 +82,14 @@ def build_deck(content: DeckContent, name: str) -> bytes:
         slide = prs.slides.add_slide(blank)
         if s.isCover:
             _cover(slide, content, s)
+        elif s.layout == "section":
+            _section(slide, content, s)
+        elif s.layout == "statement":
+            _statement(slide, content, s)
         else:
             _content(slide, content, s)
+        if s.notes:
+            slide.notes_slide.notes_text_frame.text = s.notes
 
     buf = io.BytesIO()
     prs.save(buf)

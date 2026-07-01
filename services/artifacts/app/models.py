@@ -57,6 +57,8 @@ class DocContent(BaseModel):
 class Slide(BaseModel):
     title: str
     bullets: list[str] | None = Field(default=None, max_length=30)
+    notes: str | None = None
+    layout: Literal["section", "statement"] | None = None
     isCover: bool | None = None
     subtitle: str | None = None
 

@@ -50,8 +50,9 @@ Domain persona (`hr`/`legal`/`fa`) is composed *around* the skill contract, so g
 
 ## 5. Skill runtime (BFF)
 New module `services/bff/src/skills/runtime.ts`:
-- `buildActionPrompt(type, persona, lang, mode)` → system prompt = persona + adaptive router + action-contract shape.
-- `runTurn(input)` where `input = { type, current, message, modelId, lang, sessionId?, awaiting?, plan?, confirm? }`:
+- `buildActionPrompt(type, persona, lang, mode, context?)` → system prompt = persona + adaptive router + action-contract shape (+ any `context`).
+- **Forward seam:** `runTurn`/`buildActionPrompt` accept an optional `context?: string[]` (extracted attachment text). It's injected into the prompt when present and **empty in v1** — this is the drop-in point for the future *Attachments-as-agent-context* project (separate spec), so that work needs no runtime rework.
+- `runTurn(input)` where `input = { type, current, message, modelId, lang, sessionId?, awaiting?, plan?, confirm?, context? }`:
   1. If `awaiting === 'plan-confirm'` **and** `confirm === true` (an explicit signal from the Confirm button — **not** NLP guessing) → send an **execute** turn ("Execute this plan: …" + the stored steps) expecting an `edit`.
   2. Else → one `runModel` call → parse+validate `AgentAction`. (A free-typed reply while awaiting confirm is just a normal turn — typically the model re-plans or edits with the new detail.)
   3. Return `{ action, version?, awaiting }` — `version` set only for `edit`; `awaiting='plan-confirm'` set for `plan`, else `none`.

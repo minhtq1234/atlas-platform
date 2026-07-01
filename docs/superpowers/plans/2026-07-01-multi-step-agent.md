@@ -1107,9 +1107,10 @@ describe('BFF agent endpoints (template path)', () => {
 });
 ```
 
-> Note: with no `MODEL_BASE_URL` in the test env, `runAgent` short-circuits via
-> `generationEnabled()===false` to the template — so no sandbox is provisioned and
-> the stream completes immediately. This keeps the endpoint test hermetic.
+> Note: with no `MODEL_BASE_URL` in the test env, the `/agent/run` route's
+> `generationEnabled()` guard streams the template directly (without calling
+> `runAgent`/`defaultRunDeps`) — so no sandbox is provisioned and the stream
+> completes immediately. This keeps the endpoint test hermetic.
 
 - [ ] **Step 3: Run test to verify it fails**
 
@@ -1123,7 +1124,10 @@ import { AgentPlanBody, AgentRunBody } from './types';
 import { assemble } from './generate';
 import { proposePlan, runAgent, defaultRunDeps } from './agent/run';
 import { contextProvider } from './context/provider';
+import { fallbackContent } from './templates';
 ```
+
+Also add `generationEnabled` to the existing config import at the top of `server.ts` — change `import { config, modelConfigured } from './config';` to `import { config, modelConfigured, generationEnabled } from './config';`. (`runAgent` no longer guards on `generationEnabled()` — that guard lives here at the route boundary, so the pure core stays testable with injected deps.)
 
 Add routes inside `buildServer()` before `return app;`:
 
@@ -1150,7 +1154,12 @@ Add routes inside `buildServer()` before `return app;`:
     const abort = new AbortController();
     request.raw.on('close', () => abort.abort()); // client disconnect = Stop
     try {
-      const produced = await runAgent({ req, plan }, defaultRunDeps(req.modelId, (s) => send('step', s), abort.signal));
+      // Guard here (NOT in runAgent, which is the pure injectable core): with no
+      // model/opencode configured, stream a template artifact — keeps this route
+      // hermetic in tests and never provisions a sandbox it can't use.
+      const produced = generationEnabled()
+        ? await runAgent({ req, plan }, defaultRunDeps(req.modelId, (s) => send('step', s), abort.signal))
+        : { content: fallbackContent(req), viaModel: false };
       send('done', assemble(req, name, produced));
     } catch (err) {
       send('error', { message: (err as Error).message });

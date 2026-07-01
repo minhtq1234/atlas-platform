@@ -42,14 +42,14 @@ function parseContent(raw: string, type: ArtifactType): ArtifactContent {
   return ArtifactContent.parse(obj);
 }
 
-interface Produced {
+export interface Produced {
   content: ArtifactContent;
   viaModel: boolean;
   sessionId?: string;
   degradedReason?: string;
 }
 
-function assemble(req: BuildRequest, name: string, p: Produced): Artifact {
+export function assemble(req: BuildRequest, name: string, p: Produced): Artifact {
   const now = Date.now();
   return {
     id: randomUUID(),

@@ -89,6 +89,12 @@ export const BuildRequest = z.object({
 export type BuildRequest = z.infer<typeof BuildRequest>;
 
 export const GenerateBody = z.object({ req: BuildRequest, name: z.string() });
+export const AgentPlanBody = z.object({ req: BuildRequest });
+export const AgentRunBody = z.object({
+  req: BuildRequest,
+  name: z.string().max(200),
+  plan: z.object({ steps: z.array(z.string().max(400)).min(1).max(8) }),
+});
 export const ReviseBody = z.object({
   type: ArtifactType,
   current: ArtifactContent,

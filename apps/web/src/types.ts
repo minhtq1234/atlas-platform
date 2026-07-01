@@ -160,3 +160,8 @@ export interface AgentTurn {
   version: ArtifactVersion | null; // set only when skill === 'edit'
   awaiting: 'none' | 'plan-confirm';
 }
+
+export interface AgentTask { id: string; title: string; status: 'pending' | 'active' | 'done'; }
+export type AgentStep =
+  | { kind: 'tool' | 'text'; name: string; status: 'start' | 'ok' | 'err'; detail?: string }
+  | { kind: 'task'; tasks: AgentTask[] };

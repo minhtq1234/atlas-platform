@@ -109,4 +109,11 @@ describe('useAppStore', () => {
       useAppStore.getState().sources.find((x) => x.key === 'ATS')?.connected,
     ).toBe(false);
   });
+
+  it('toggles agent mode', () => {
+    useAppStore.getState().setAgentMode(true);
+    expect(useAppStore.getState().agentMode).toBe(true);
+    useAppStore.getState().setAgentMode(false);
+    expect(useAppStore.getState().agentMode).toBe(false);
+  });
 });

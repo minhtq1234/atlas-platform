@@ -30,6 +30,7 @@ export interface ConfigureTarget {
 
 interface AppState {
   lang: 'en' | 'vi';
+  agentMode: boolean;
 
   // composer
   draft: string;
@@ -65,6 +66,7 @@ interface AppState {
 
   // actions
   setLang: (l: 'en' | 'vi') => void;
+  setAgentMode: (v: boolean) => void;
   setDraft: (v: string) => void;
   setOutput: (t: ArtifactType) => void;
   selectSource: (key: string) => void;
@@ -112,6 +114,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
   lang: 'en',
+  agentMode: false,
 
   draft: '',
   output: 'Doc',
@@ -137,6 +140,7 @@ export const useAppStore = create<AppState>()(
   pendingPlan: {},
 
   setLang: (lang) => set({ lang }),
+  setAgentMode: (agentMode) => set({ agentMode }),
   setDraft: (draft) => set({ draft }),
   setOutput: (output) => set({ output, menu: null }),
 
@@ -267,7 +271,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'atlas-store',
       // Only persist durable data — not transient UI/build state.
-      partialize: (s) => ({ library: s.library, lang: s.lang, awaiting: s.awaiting, pendingPlan: s.pendingPlan }),
+      partialize: (s) => ({ library: s.library, lang: s.lang, awaiting: s.awaiting, pendingPlan: s.pendingPlan, agentMode: s.agentMode }),
     },
   ),
 );

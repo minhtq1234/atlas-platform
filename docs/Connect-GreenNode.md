@@ -51,7 +51,14 @@ In OpenCode mode the model id sent to the endpoint is the provider model key in
 `agent/opencode.json` — set that key (and the BFF's `modelId`, minus the `gn-`
 prefix) to the real GreenNode model **path**.
 
+**Agent mode (multi-step tool agent — v1):**
+- **Dev (`local` sandbox):** with an OpenCode server already running (above), set `SANDBOX=local` (the default). `/agent/run` seeds attachment text into a temp workdir and drives the running OpenCode `builder` agent. No container needed. This exercises the whole plan→run→emit loop; the `emit_artifact` self-heal (synchronous tool return) is the piece to shake out live — see SPEC §8.
+- **Prod (`container` sandbox — gated ops):**
+  1. Build the sandbox image `atlas/agent-sandbox:latest` (or set `AGENT_IMAGE`): a base with `opencode` + `python3` and `python-docx`/`openpyxl`/`python-pptx`/`pypdf` installed, entrypoint `opencode serve`.
+  2. Create a restricted docker network so the sandbox can reach **only** the sovereign model host: `docker network create atlas-egress` then apply egress firewall rules (allow `*.vngcloud.vn:443` + the BFF's emit endpoint; deny all else). This is the network-level enforcement of the `MODEL_ALLOWED_HOSTS` invariant.
+  3. Run the BFF with `SANDBOX=container` (+ `AGENT_MAX_STEPS`, `AGENT_TIMEOUT_MS` as needed). Each `/agent/run` gets a fresh, firewalled, workspace-mounted container that is destroyed when the run ends.
+
 ## Notes
-- The **egress allowlist** (`MODEL_ALLOWED_HOSTS`) must include `vngcloud.vn`, or the BFF refuses to start (sovereignty guard). Loopback is always allowed.
+- The **egress allowlist** (`MODEL_ALLOWED_HOSTS`) must include `vngcloud.vn`, or the BFF refuses to start (sovereignty guard). Loopback is always allowed. In `container` agent mode the same invariant is enforced at the sandbox's network firewall.
 - Keys live in `.env` (gitignored) or the vault — never in code/images.
 - If nothing is configured, the BFF serves **template** artifacts and the web app still works (degraded); connecting a key upgrades every build to model-authored with no code change.

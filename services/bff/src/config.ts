@@ -31,6 +31,16 @@ export const config = {
     // Bound the OpenCode call — it blocks/retries when its provider is down.
     timeoutMs: Number(process.env.OPENCODE_TIMEOUT_MS ?? 60000),
   },
+
+  // Multi-step agent sandbox. 'local' = temp workdir + local opencode (dev/CI);
+  // 'container' = per-session ephemeral container (prod). Budgets bound a run.
+  agent: {
+    sandbox: (process.env.SANDBOX ?? 'local') as 'container' | 'local',
+    image: process.env.AGENT_IMAGE ?? 'atlas/agent-sandbox:latest',
+    maxSteps: Number(process.env.AGENT_MAX_STEPS ?? 40),
+    timeoutMs: Number(process.env.AGENT_TIMEOUT_MS ?? 180000),
+    workRoot: process.env.AGENT_WORK_ROOT ?? '/tmp/atlas-agent',
+  },
 };
 
 export const modelConfigured = () => config.model.baseUrl.trim().length > 0;

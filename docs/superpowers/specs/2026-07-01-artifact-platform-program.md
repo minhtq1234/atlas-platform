@@ -105,6 +105,13 @@ consumed uniformly by all packs. Each is its own sub-spec.
 ### WS-1…5 · Artifact Packs (parallel, one team each)
 Each clones the reference pack's structure against the frozen contract and goes deep:
 
+> **Status (2026-07-01): WS-2 Deck — P0–P1 shipped.** Board + Pitch archetypes, deck
+> craft-rule guidance (assertion-style titles, speaker notes), and section/statement
+> layouts across schema · renderer · pptx export. Suites green (BFF 63 · web 36 · py 15),
+> `tsc` clean, code-reviewed, and live-verified against GreenNode (board + pitch decks).
+> Chart slides deferred. Pack docs: `docs/artifact-packs/deck/`; plan:
+> `docs/superpowers/plans/2026-07-01-deck-pack-build.md`.
+
 | Pack | Team charter (deepen) |
 |---|---|
 | **WS-1 Doc** | Archetypes: team-defined archetypes (e.g. PRD, SOW, policy, exec memo). Sectioned-block depth, requirement tables, exemplars, revise flows. |

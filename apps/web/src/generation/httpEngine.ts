@@ -1,7 +1,7 @@
 // HTTP-backed generation engine that calls the BFF (services/bff), which drives
 // OpenCode → the GreenNode model. Wrapped in a resilient engine that falls back
 // to the in-browser mock when the BFF is unreachable, so the app always works.
-import type { AgentTurn, Artifact, BuildRequest } from '../types';
+import type { AgentStep, AgentTurn, Artifact, BuildRequest } from '../types';
 import type { GenerationEngine, ReviseOpts } from './engine';
 
 /** The BFF was reachable but returned an error (vs. a network/transport failure). */
@@ -78,6 +78,50 @@ export function makeHttpEngine(baseUrl: string): GenerationEngine {
         }
       }
       if (!artifact) throw new BffServerError('stream ended without an artifact');
+      return artifact;
+    },
+
+    async agentPlan(req: BuildRequest): Promise<{ steps: string[] }> {
+      const res = await fetch(`${baseUrl}/agent/plan`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ req }),
+      });
+      if (!res.ok) throw new BffServerError(`BFF agent/plan failed (${res.status})`);
+      return (await res.json()).plan;
+    },
+
+    async agentRun(req, name, plan, onStep): Promise<Artifact> {
+      const res = await fetch(`${baseUrl}/agent/run`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ req, name, plan }),
+      });
+      if (!res.ok || !res.body) throw new BffServerError(`BFF agent/run failed (${res.status})`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let artifact: Artifact | undefined;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let sep: number;
+        while ((sep = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          let event = 'message';
+          const dataLines: string[] = [];
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) event = line.slice(6).trim();
+            else if (line.startsWith('data:')) dataLines.push(line.slice(5).replace(/^ /, ''));
+          }
+          if (!dataLines.length) continue;
+          const data = JSON.parse(dataLines.join('\n'));
+          if (event === 'step') onStep(data as AgentStep);
+          else if (event === 'done') artifact = data as Artifact;
+          else if (event === 'error') throw new BffServerError(data.message || 'agent error');
+        }
+      }
+      if (!artifact) throw new BffServerError('agent stream ended without an artifact');
       return artifact;
     },
   };

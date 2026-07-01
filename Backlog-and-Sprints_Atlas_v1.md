@@ -1,6 +1,12 @@
 # Atlas — Backlog & Sprint Plan (v1)
 
-**Owner:** Andy Tran (DTO) · **Date:** 30 June 2026 · **Status:** Draft for team
+> **STATUS (1 Jul 2026): the artifact-generation product is DELIVERED and live.**
+> - **Done:** the full web product (Home → Configure → Build → Studio → Library), 5 artifact types, the generation engine, and states/polish — i.e. the S1–S5 *software* scope of this plan.
+> - **Delivered beyond this plan:** Node/Fastify **BFF** (`/generate` · `/generate/stream` SSE · `/revise`), Python **artifact-export service** (docx/xlsx/pptx + HTML), **real OpenCode integration**, a **live GreenNode MaaS** connection (Gemma/Qwen/MiniMax), hardening, and a security code-review pass.
+> - **Still parked (as planned, §6):** the data layer (FDL MCP / Trino / masking / identity), SSO, server persistence/retention, multi-tenant, deploy.
+> Authoritative current state + roadmap: **`Atlas_Architecture-AsBuilt_v1.md`**. Below is the original plan (kept for traceability).
+
+**Owner:** Andy Tran (DTO) · **Date:** 30 June 2026 · **Status:** Draft for team → delivered (software scope)
 **Builds on:** `UX-Spec_Atlas-Home_v1.md`, `Kickoff_Atlas_Dev-Team.md`
 **Scope:** VNG-internal · artifact generation only · five types (Doc/Deck/Sheet/Dashboard/Report)
 **Data:** **No data-source dependency.** Artifacts are generated from **prompt + optional user uploads + the model**. All FDL/Trino/masking/identity work is **parked** (see §6).

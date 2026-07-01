@@ -1,5 +1,7 @@
 # Atlas Web — Phase 1 Implementation Plan
 
+> **STATUS (1 Jul 2026): ✅ DELIVERED and extended.** All milestones M0–M5 shipped, plus work beyond this plan — a Node/Fastify BFF, a Python artifact-export service, a real OpenCode integration, and a **live GreenNode MaaS** connection. For the current, authoritative picture see **`Atlas_Architecture-AsBuilt_v1.md`**. This plan is kept as the historical Phase-1 record.
+
 > **For agentic workers:** execute task-by-task; steps use `- [ ]` checkboxes. TDD where logic warrants; runnable verification for UI.
 
 **Goal:** Ship a runnable, clickable Atlas web app — the AI-native artifact-generation product — implementing the v2 design end to end, with all external dependencies stubbed behind clean interfaces.

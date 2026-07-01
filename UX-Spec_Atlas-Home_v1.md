@@ -1,7 +1,9 @@
 # UX Spec — Atlas Home (v1)
 
+> **STATUS (1 Jul 2026): mostly BUILT.** Home, composer (output-type · source · **model picker** · upload), template gallery, Configure overlay, Build (with real streamed progress) and **Studio** are implemented; the **GreenNode model picker** is live. Deferred as designed: data-source connection (UI-only), refreshable-report live refresh, full VN shell. Authoritative status: **`Atlas_Architecture-AsBuilt_v1.md`** (§3). This spec remains the design intent.
+
 **Owner:** Andy Tran (DTO, product) · **Author:** product/design
-**Date:** 30 June 2026 · **Status:** Draft for team
+**Date:** 30 June 2026 · **Status:** Draft for team → implemented
 **Scope:** Home screen + composer, template gallery, configure overlay, build → Studio handoff. VNG-internal, artifact generation only.
 **Reference UX:** coworker.ai (app.coworker.ai) — adopt its *structure and controls*, keep Atlas's Strata brand.
 **Supersedes:** the `Atlas Home.dc.html` prototype (which this builds on directly).

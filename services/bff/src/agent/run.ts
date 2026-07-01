@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { generationEnabled } from '../config';
+import { generationEnabled, config } from '../config';
 import { runModel } from '../modelClient';
 import { extractJson } from '../generate';
 import { shapeHint, INJECTION_NOTE } from '../prompt';
@@ -8,6 +8,9 @@ import { contextProvider } from '../context/provider';
 import { makeTools, type RunState } from './tools';
 import type { BuildRequest } from '../types';
 import type { AgentProduced, AgentSession, SandboxHandle, SeedFile, Step, Sandbox } from './types';
+import { LocalSandbox } from './sandbox';
+import { ContainerSandbox } from './sandbox.container';
+import { makeOpenCodeSession } from './session';
 
 export interface Plan { steps: string[] }
 
@@ -76,6 +79,21 @@ export async function defaultSeedFiles(req: BuildRequest): Promise<SeedFile[]> {
     const name = req.uploads?.[i]?.name ?? `input-${i + 1}.txt`;
     return { name: /\.[a-z0-9]+$/i.test(name) ? `${name}.txt` : `${name}.txt`, bytes: Buffer.from(text, 'utf8') };
   });
+}
+
+/** Concrete deps from config: Local sandbox in dev, Container in prod. */
+export function defaultRunDeps(modelId: string, onStep: (s: Step) => void, signal?: AbortSignal): RunDeps {
+  const sandbox = config.agent.sandbox === 'container'
+    ? new ContainerSandbox()
+    : new LocalSandbox(config.openCode.url, config.agent.workRoot);
+  return {
+    provision: sandbox.provision.bind(sandbox),
+    makeSession: (h) => makeOpenCodeSession(h, modelId),
+    onStep,
+    seedFiles: defaultSeedFiles,
+    maxSteps: config.agent.maxSteps,
+    signal,
+  };
 }
 
 /**

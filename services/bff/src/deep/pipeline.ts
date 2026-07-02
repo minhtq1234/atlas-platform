@@ -24,8 +24,7 @@ export interface DeepInput {
   exemplar: string | null;
 }
 export interface DeepResult {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  content: ArtifactContent & Record<string, any>; // ArtifactContent at runtime; loosened for discriminated-union field access in tests
+  content: ArtifactContent;
   degradedReason?: string;
 }
 
@@ -45,8 +44,7 @@ export async function runDeepPipeline(input: DeepInput, deps: DeepDeps): Promise
   const start = now();
 
   const singleTurn = async (reason: string): Promise<DeepResult> => {
-    // Include <current> tag to signal a fallback generation (distinguishes from outline calls in tests/routing).
-    const raw = await deps.callModel(generateSystem(type, lang, arch), `${generateUser(req, context, exemplar)}\n<current>fallback</current>`);
+    const raw = await deps.callModel(generateSystem(type, lang, arch), generateUser(req, context, exemplar));
     return { content: deps.parse(raw, type), degradedReason: reason };
   };
 

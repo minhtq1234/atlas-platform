@@ -27,7 +27,7 @@ describe('runDeepPipeline', () => {
       clean,                           // critic round 2 → done
     ]);
     const r = await runDeepPipeline(input, d);
-    expect(r.content.paragraphs).toEqual(['revised']);
+    expect((r.content as any).paragraphs).toEqual(['revised']);
     expect(r.degradedReason).toBeUndefined();
   });
 
@@ -37,7 +37,7 @@ describe('runDeepPipeline', () => {
       .mockResolvedValueOnce(JSON.stringify(doc('draft')))
       .mockResolvedValueOnce(clean); // critic done immediately
     const r = await runDeepPipeline(input, { callModel: call, parse });
-    expect(r.content.paragraphs).toEqual(['draft']);
+    expect((r.content as any).paragraphs).toEqual(['draft']);
     expect(call).toHaveBeenCalledTimes(3); // no revise
   });
 
@@ -49,39 +49,40 @@ describe('runDeepPipeline', () => {
       : u.includes('units') || !u.includes('<current>') ? '{"units":[]}'
       : findings);
     const r = await runDeepPipeline(input, { callModel: call as any, parse, maxRounds: 2 });
-    expect(r.content.paragraphs).toEqual(['rev']);
+    expect((r.content as any).paragraphs).toEqual(['rev']);
     // outline + draft + (critic+revise)*2 = 6 calls
     expect(call).toHaveBeenCalledTimes(6);
   });
 
   it('outline failure → single-turn fast path (degraded)', async () => {
-    const call = vi.fn(async (_s: string, u: string) => {
-      if (!u.includes('<plan>') && !u.includes('<current>')) throw new Error('outline down'); // outline call throws
+    // Only the outline call throws — its system prompt says "planning"; singleTurn
+    // uses generateSystem ("composes finished …") and succeeds.
+    const call = vi.fn(async (s: string) => {
+      if (s.includes('planning')) throw new Error('outline down');
       return JSON.stringify(doc('single'));
     });
-    // first call is the outline (throws); singleTurn re-calls with generateUser (no <plan>) → returns 'single'
     const r = await runDeepPipeline(input, { callModel: call as any, parse });
-    expect(r.content.paragraphs).toEqual(['single']);
+    expect((r.content as any).paragraphs).toEqual(['single']);
     expect(r.degradedReason).toContain('outline');
   });
 
   it('invalid draft → self-heal retry → single-turn if still invalid', async () => {
     const d = deps(['{"units":[]}', 'BAD', 'BAD', JSON.stringify(doc('single'))]);
     const r = await runDeepPipeline(input, d);
-    expect(r.content.paragraphs).toEqual(['single']);
+    expect((r.content as any).paragraphs).toEqual(['single']);
     expect(r.degradedReason).toContain('draft');
   });
 
   it('invalid revise → keeps the last valid draft', async () => {
     const d = deps(['{"units":[]}', JSON.stringify(doc('draft')), findings, 'BAD']);
     const r = await runDeepPipeline(input, d);
-    expect(r.content.paragraphs).toEqual(['draft']); // revise threw → keep draft
+    expect((r.content as any).paragraphs).toEqual(['draft']); // revise threw → keep draft
   });
 
   it('unparseable critique → keeps the draft (loop breaks)', async () => {
     const d = deps(['{"units":[]}', JSON.stringify(doc('draft')), 'not json']);
     const r = await runDeepPipeline(input, d);
-    expect(r.content.paragraphs).toEqual(['draft']);
+    expect((r.content as any).paragraphs).toEqual(['draft']);
   });
 
   it('budget exceeded → returns best so far before the next round', async () => {
@@ -91,7 +92,7 @@ describe('runDeepPipeline', () => {
       { now: () => (t += 1000), budgetMs: 500 }, // clock jumps past budget on the first loop check
     );
     const r = await runDeepPipeline(input, d);
-    expect(r.content.paragraphs).toEqual(['draft']); // budget hit before round 1 critic
+    expect((r.content as any).paragraphs).toEqual(['draft']); // budget hit before round 1 critic
     expect(r.degradedReason).toContain('budget');
   });
 

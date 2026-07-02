@@ -74,6 +74,22 @@ def test_deck_is_valid_pptx_with_one_slide_per_input():
     assert "1,248 total" in all_text
 
 
+def test_deck_exports_speaker_notes_and_section_layout():
+    c = DeckContent(
+        kind="Deck", eyebrow="ATLAS · BOARD", title="Q2", subtitle="x",
+        slides=[
+            {"isCover": True, "title": "Q2"},
+            {"title": "Part Two", "layout": "section"},
+            {"title": "Growth up 40%", "bullets": ["Enterprise led"], "notes": "Mention the Q2 deal."},
+        ],
+    )
+    data = build_deck(c, "Q2 Deck")
+    prs = Presentation(io.BytesIO(data))
+    assert len(prs.slides) == 3
+    # speaker notes land on the third slide's notes page
+    assert "Q2 deal" in prs.slides[2].notes_slide.notes_text_frame.text
+
+
 def test_sheet_neutralizes_formula_injection():
     # A string cell starting with '=' must NOT become a live formula.
     c = SheetContent(

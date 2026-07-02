@@ -35,7 +35,8 @@ independently. The architecture:
 
 **Read in this order:**
 1. `docs/superpowers/specs/2026-07-01-artifact-platform-program.md` — the map: Platform vs Packs, the `ArtifactTypeModule` contract, per-team charters, file-isolation map, how independence is enforced.
-2. Your workstream's design + plan (below).
+2. `docs/artifact-packs/PLAYBOOK.md` — how a Pack team actually works: the 6 phases (collect → define → build → evaluate → ship), the two hard gates, the three roles. Coding is ~30% of a pack.
+3. Your workstream's design + plan (below).
 
 ## Active workstream — WS-0 · Platform (do this first; it unblocks everyone)
 The enabling refactor: freeze the contract, split the monolithic `types.ts`/`prompt.ts`/
@@ -53,7 +54,7 @@ other four are mechanical relocations.
   quality; full design in the WS-0 spec §5; gets its own plan.
 
 ## Pack workstreams (start after WS-0 freezes the contract)
-Each team clones the Doc reference pack and goes deep, editing only its files:
+Every pack runs the **[Pack Playbook](docs/artifact-packs/PLAYBOOK.md)** (6 phases, 2 hard gates). The **Deck pack** (`docs/artifact-packs/deck/`) is the worked reference; copy `docs/artifact-packs/_TEMPLATE/` to start a new one. Kick off exemplar **collection early** — it has the longest lead time and doesn't need code. Each team clones the Doc reference *code* pack and goes deep, editing only its files:
 - **Doc** — team-defined archetypes (PRD, SOW, policy, exec memo); sectioned-block depth; exemplars.
 - **Deck** — slide archetypes (board / pitch / QBR); layouts; speaker notes; exemplars; pptx fidelity.
 - **Sheet** — financial model / headcount plan / schedule; formulas; exemplars; xlsx fidelity.

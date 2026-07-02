@@ -13,6 +13,8 @@ import {
 import { runTurn } from './skills/runtime';
 import type { TurnResult } from './skills/types';
 import { contextProvider } from './context/provider';
+import { exemplarProvider } from './exemplar/provider';
+import { runDeepPipeline } from './deep/pipeline';
 
 /** Extract a JSON object from possibly-prose/fenced model output. */
 export function extractJson(raw: string): string {
@@ -81,11 +83,23 @@ async function produceContent(req: BuildRequest, onStage: Stage = () => {}): Pro
     // Best-effort: fetch extracted text for any attachments (docIds) as context.
     const docIds = (req.uploads ?? []).map((u) => u.docId).filter((d): d is string => !!d);
     const context = docIds.length ? await contextProvider.getContext(docIds, req.brief) : [];
-    onStage(`Composing ${req.type.toLowerCase()}…`);
+    const exemplar = await exemplarProvider.getExemplar(req.type, req.archetypeId);
     const arch = archetype(req.archetypeId ?? detectArchetype(req.brief));
+    if (req.mode === 'deep') {
+      const { content, degradedReason } = await runDeepPipeline(
+        { req, arch, context, exemplar },
+        {
+          callModel: (system, user) => runModel(system, user, req.modelId).then((r) => r.text),
+          parse: parseContent,
+          onStage,
+        },
+      );
+      return { content, viaModel: true, degradedReason };
+    }
+    onStage(`Composing ${req.type.toLowerCase()}…`);
     const { text, sessionId } = await runModel(
       generateSystem(req.type, req.lang ?? 'en', arch),
-      generateUser(req, context),
+      generateUser(req, context, exemplar),
       req.modelId,
     );
     onStage('Validating & finalizing…');

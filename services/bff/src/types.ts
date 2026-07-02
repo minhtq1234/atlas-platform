@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ArtifactContent } from './artifacts/registry';
 
 // Zod schemas mirroring the web app's ArtifactContent (apps/web/src/types.ts).
 // These both validate model output and document the contract.
@@ -6,78 +7,10 @@ import { z } from 'zod';
 export const ArtifactType = z.enum(['Doc', 'Deck', 'Sheet', 'Dashboard', 'Report']);
 export type ArtifactType = z.infer<typeof ArtifactType>;
 
-export const Block = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('paragraph'), text: z.string().max(4000) }),
-  z.object({ type: z.literal('bullets'), items: z.array(z.string().max(600)).max(50) }),
-  z.object({ type: z.literal('numbers'), items: z.array(z.string().max(600)).max(50) }),
-  z.object({ type: z.literal('table'), columns: z.array(z.string().max(120)).min(1).max(8), rows: z.array(z.array(z.string().max(400)).max(8)).max(100) }),
-  z.object({ type: z.literal('callout'), value: z.string().max(200), label: z.string().max(120) }),
-  z.object({ type: z.literal('bars'), label: z.string().max(120).optional(), bars: z.array(z.object({ label: z.string(), value: z.number() })).max(50) }),
-]);
-export const Section = z.object({ heading: z.string().max(200), blocks: z.array(Block).max(40) });
-
-export const DocContent = z.object({
-  kind: z.literal('Doc'),
-  eyebrow: z.string(),
-  title: z.string(),
-  meta: z.string(),
-  paragraphs: z.array(z.string()).max(200).optional(),
-  sections: z.array(Section).max(30).optional(),
-  bars: z.array(z.object({ label: z.string(), value: z.number() })).max(50).optional(),
-  barsLayout: z.enum(['vertical', 'horizontal']).optional(),
-  callout: z.object({ value: z.string(), label: z.string() }).optional(),
-});
-
-export const Slide = z.object({
-  title: z.string(),
-  bullets: z.array(z.string()).max(30).optional(),
-  isCover: z.boolean().optional(),
-  subtitle: z.string().optional(),
-});
-
-export const DeckContent = z.object({
-  kind: z.literal('Deck'),
-  eyebrow: z.string(),
-  title: z.string(),
-  subtitle: z.string(),
-  slides: z.array(Slide).min(1).max(100),
-});
-
-export const SheetContent = z.object({
-  kind: z.literal('Sheet'),
-  title: z.string(),
-  columns: z.array(z.string()).min(1).max(50),
-  rows: z.array(z.array(z.union([z.string(), z.number()])).max(50)).max(5000),
-});
-
-export const DashboardContent = z.object({
-  kind: z.literal('Dashboard'),
-  title: z.string(),
-  subtitle: z.string(),
-  tiles: z.array(z.object({ label: z.string(), value: z.string(), delta: z.string().optional() })).max(24),
-  series: z.object({
-    label: z.string(),
-    bars: z.array(z.object({ label: z.string(), value: z.number() })).max(1000),
-  }),
-});
-
-export const ReportContent = z.object({
-  kind: z.literal('Report'),
-  eyebrow: z.string(),
-  title: z.string(),
-  asOf: z.string(),
-  stats: z.array(z.object({ value: z.string(), label: z.string() })).max(24),
-  paragraphs: z.array(z.string()).min(1).max(200),
-});
-
-export const ArtifactContent = z.discriminatedUnion('kind', [
-  DocContent,
-  DeckContent,
-  SheetContent,
-  DashboardContent,
-  ReportContent,
-]);
-export type ArtifactContent = z.infer<typeof ArtifactContent>;
+// Artifact content schemas now live in per-type modules (services/bff/src/artifacts/<type>/)
+// composed into this discriminated union by the registry. Re-exported (value + type) so
+// every existing `from './types'` import keeps working and local references below resolve.
+export { ArtifactContent };
 
 export const UploadRef = z.object({
   id: z.string().max(200),
@@ -98,6 +31,8 @@ export const BuildRequest = z.object({
   brief_chips: z.array(z.string().max(200)).max(50).optional(),
   lang: z.enum(['en', 'vi']).optional(),
   archetypeId: z.string().max(60).optional(),
+  /** 'deep' opts into the multi-agent depth pipeline; default single-turn. */
+  mode: z.enum(['fast', 'deep']).optional(),
 });
 export type BuildRequest = z.infer<typeof BuildRequest>;
 

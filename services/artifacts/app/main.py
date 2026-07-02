@@ -3,16 +3,15 @@ import re
 import time
 from urllib.parse import quote
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from .attachments import retrieve_context, store_attachment
-from .docx_builder import build_doc
-from .pptx_builder import build_deck
+from .attachments import extract_text, retrieve_context, store_attachment
+from .exemplars import retrieve_exemplar, store_exemplar
+from .exports.registry import EXPORTERS
 from .models import ExportRequest
-from .xlsx_builder import build_sheet
 
 app = FastAPI(title="Atlas Artifacts", version="1.0.0")
 
@@ -29,9 +28,6 @@ MIME = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 }
-
-# Which artifact kinds export to which Office format.
-KIND_EXT = {"Doc": "docx", "Sheet": "xlsx", "Deck": "pptx"}
 
 
 def _filename(name: str, ext: str) -> str:
@@ -54,23 +50,17 @@ def health():
 
 @app.post("/export")
 def export(req: ExportRequest):
-    kind = req.content.kind
-    ext = KIND_EXT.get(kind)
-    if not ext:
+    entry = EXPORTERS.get(req.content.kind)
+    if not entry:
         raise HTTPException(
             status_code=415,
-            detail=f"{kind} exports as HTML (handled client-side), not an Office file.",
+            detail=f"{req.content.kind} exports as HTML (handled client-side), not an Office file.",
         )
-
+    ext, builder = entry
     try:
-        if kind == "Doc":
-            data = build_doc(req.content, req.name)
-        elif kind == "Sheet":
-            data = build_sheet(req.content, req.name)
-        else:  # Deck
-            data = build_deck(req.content, req.name)
+        data = builder(req.content, req.name)
     except ValueError as e:  # malformed-but-schema-valid input → clean 4xx, not 500
-        raise HTTPException(status_code=422, detail=f"Could not build {kind}: {e}")
+        raise HTTPException(status_code=422, detail=f"Could not build {req.content.kind}: {e}")
 
     return Response(
         content=data,
@@ -102,3 +92,30 @@ class RetrieveReq(BaseModel):
 @app.post("/attachments/retrieve")
 def attachments_retrieve(req: RetrieveReq):
     return {"passages": retrieve_context(req.doc_ids, req.query, req.k)}
+
+
+@app.post("/exemplars")
+async def exemplars_upload(
+    file: UploadFile = File(...),
+    tag: str = Form(...),
+    title: str = Form(""),
+):
+    data = await file.read()
+    try:
+        text = extract_text(
+            data,
+            file.content_type or "application/octet-stream",
+            file.filename or "file",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return store_exemplar(tag, title or (file.filename or "exemplar"), text, time.time())
+
+
+class ExemplarRetrieveReq(BaseModel):
+    tags: list[str]
+
+
+@app.post("/exemplars/retrieve")
+def exemplars_retrieve(req: ExemplarRetrieveReq):
+    return {"exemplar": retrieve_exemplar(req.tags)}

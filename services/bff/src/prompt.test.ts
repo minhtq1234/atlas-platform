@@ -18,10 +18,11 @@ describe('archetype-aware generate', () => {
     expect(sys).toContain('"sections"');
   });
 
-  it('a Deck is unaffected by archetype', () => {
+  it('a Deck gets craft rules but ignores a foreign (Doc) archetype', () => {
     const sys = generateSystem('Deck', 'en', testArch);
     expect(sys).toContain('"kind":"Deck"');
-    expect(sys).not.toContain('Alpha Section');
+    expect(sys).toContain('assertion'); // DECK_RULES injected via moduleFor('Deck').guidance
+    expect(sys).not.toContain('Alpha Section'); // the Doc archetype's sections do NOT leak in
   });
 });
 
@@ -42,5 +43,28 @@ describe('generateUser', () => {
     );
     expect(u).not.toContain('<context>');
     expect(u).toContain('<files>a.md</files>');
+  });
+});
+
+describe('generateUser exemplar block', () => {
+  const req = { brief: 'b', type: 'Doc', modelId: 'm' } as any;
+
+  it('adds a capped <exemplar> reference block when an exemplar is given', () => {
+    const u = generateUser(req, [], 'GOLD BODY TEXT');
+    expect(u).toContain('<exemplar>');
+    expect(u).toContain('GOLD BODY TEXT');
+    expect(u).toContain('do NOT copy'); // reference-not-instructions framing
+  });
+
+  it('caps the exemplar content to 3500 chars', () => {
+    const u = generateUser(req, [], 'x'.repeat(5000));
+    // content sits between the '\n---\n' separator and the closing tag
+    const content = u.slice(u.indexOf('\n---\n') + 5, u.indexOf('\n</exemplar>'));
+    expect(content).toBe('x'.repeat(3500));
+  });
+
+  it('omits the block (identical to before) when no exemplar', () => {
+    expect(generateUser(req, [])).not.toContain('<exemplar>');
+    expect(generateUser(req, [], null)).not.toContain('<exemplar>');
   });
 });

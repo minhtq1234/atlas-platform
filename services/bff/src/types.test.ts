@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ArtifactContent } from './types';
+import { ArtifactContent, BuildRequest } from './types';
 
 const sectioned = {
   kind: 'Doc', eyebrow: 'E', title: 'T', meta: 'm',
@@ -24,5 +24,13 @@ describe('DocContent sectioned', () => {
   it('rejects an unknown block type', () => {
     const bad = { kind: 'Doc', eyebrow: 'E', title: 'T', meta: 'm', sections: [{ heading: 'H', blocks: [{ type: 'video', src: 'x' }] }] };
     expect(ArtifactContent.safeParse(bad).success).toBe(false);
+  });
+});
+
+describe('BuildRequest.mode', () => {
+  it('accepts fast/deep and defaults undefined', () => {
+    expect(BuildRequest.parse({ brief: 'b', type: 'Doc', modelId: 'm' }).mode).toBeUndefined();
+    expect(BuildRequest.parse({ brief: 'b', type: 'Doc', modelId: 'm', mode: 'deep' }).mode).toBe('deep');
+    expect(BuildRequest.safeParse({ brief: 'b', type: 'Doc', modelId: 'm', mode: 'nope' }).success).toBe(false);
   });
 });

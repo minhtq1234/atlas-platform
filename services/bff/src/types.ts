@@ -31,6 +31,8 @@ export const BuildRequest = z.object({
   brief_chips: z.array(z.string().max(200)).max(50).optional(),
   lang: z.enum(['en', 'vi']).optional(),
   archetypeId: z.string().max(60).optional(),
+  /** 'deep' opts into the multi-agent depth pipeline; default single-turn. */
+  mode: z.enum(['fast', 'deep']).optional(),
 });
 export type BuildRequest = z.infer<typeof BuildRequest>;
 
